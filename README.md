@@ -20,4 +20,4 @@ What you were able to make your robot do and what the main components of your pr
 Execution: Describe how to run your code, e.g., step-by-step instructions on what commands to run in each terminal window to execute your project code.
 Challenges, Future Work, and Takeaways: These should take a similar form and structure to how you approached these in the previous projects (1 paragraph each for the challenges and future work and a few bullet points for takeaways)
 
-## [Installing Arduino](https://emanual.robotis.com/docs/en/parts/controller/opencr10/#install-on-linux)
+### [Installing Arduino](https://emanual.robotis.com/docs/en/parts/controller/opencr10/#install-on-linux)
