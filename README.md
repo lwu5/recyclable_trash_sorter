@@ -1,5 +1,5 @@
-# recyclable_trash_sorter
-## Team
+# Recycable Trash Sorter
+## Team Members:
 LAWS: Ana Rath, Suha Chang, William Zeng, Liuhao Wu
 
 ## Proposal 5/11
