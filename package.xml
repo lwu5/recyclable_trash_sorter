@@ -1,0 +1,35 @@
+<package format="2">
+  <name>recyclable_trash_sorter</name>
+  <version>0.0.0</version>
+  <description>
+  The recyclable trash sorter package
+  </description>
+  <maintainer email="sarahsebo@uchicago.edu">Sarah Sebo</maintainer>
+  <license>MIT</license>
+
+  <export>
+      <!-- gazebo_ros_paths_plugin automatically adds these to
+          GAZEBO_PLUGIN_PATH and GAZEBO_MODEL_PATH when you do this export inside
+          the package.xml file. You can than use URIs of type model://my_package/stuff. -->
+      <gazebo_ros                                                                 
+          gazebo_plugin_path="${prefix}/lib"
+          gazebo_model_path="${prefix}/.." /> 
+  </export>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>roscpp</build_depend>
+  <build_depend>rospy</build_depend>
+  <build_depend>std_msgs</build_depend>
+  <build_depend>message_generation</build_depend>
+  <build_export_depend>roscpp</build_export_depend>
+  <build_export_depend>rospy</build_export_depend>
+  <build_export_depend>std_msgs</build_export_depend>
+  <exec_depend>roscpp</exec_depend>
+  <exec_depend>rospy</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>gazebo_ros</exec_depend>
+  <exec_depend>message_runtime</exec_depend>
+  
+</package>
