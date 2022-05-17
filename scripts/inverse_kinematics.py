@@ -33,6 +33,8 @@ class inverse_kinematics:
         # absolute position of end effector
         self.current_location = moveit_commander.move_group.MoveGroupCommander.get_current_pose()
 
+        self.goal_location = [0,0,0]
+
         # Reset arm position
         self.move_group_arm.go([0.0, 
                                 math.radians(-60.0), 
@@ -54,33 +56,91 @@ class inverse_kinematics:
         # TODO: from scan and image data, find the end position that we want the robot arm to move to
         if self.images is not None and self.scans is not None:
             # implement object recognition + transformation logic
-            return
+            # self.goal_location = _________
 
+    def get_current_location(self, angles):
+        l_1 = .128 # distance from first joint to second joint (m)
+        l_2 = .024 + .124 # distance from second joint to third joint ()
+        l_3 = .126 # distance from third joint to end effector (technically, our fourth fixed joint)
+        j_1 = angles[0]
+        j_2 = angles[1]
+        j_3 = angles[2]
+        curr_x = (l_2 * math.cos(j_1) * math.cos(j_2)) + (l_3 * math.cos(j_1) * math.cos(j_2 + j_3)
+        curr_y = (l_2 * math.sin(j_1) * math.cose(j_2)) + (l_3 * math.sin(j_1) * math.cos(j_2 + j_3))
+        curr_z = l_1 + (l_2*sin(j_2) + (l_3*sin(j_2 + j_3))
+        current_location = [curr_x, curr_y, curr_z]
+
+        return current_location
+
+    def get_joint_dist(self, angles, goal_location):
+        current_location = self.get_current_location(angles)
+        curr_location_array = np.asarray(current_location)
+
+        goal_location_array = np.asarray(goal_location)
+        
+        distance = numpy.linalg.norm(curr_location_array - goal_location_array) 
+    
+    def gradient_descent(self):
+        # Computes gradient based on joint distance of each joint.
+        # distance from the target
+        # reference: https://www.alanzucconi.com/2017/04/10/gradient-descent/
+        delta = 1 # TODO: figure out good delta for gradient descent
+        old_distance = self.get_joint_dist(self.current_joint_angles, self.goal_location)
+        new_joint_angles = []
+        for i in (range(self.current_joint_angles) - 1): # make sure not to update the fourth angle
+            new_joint_angles.append(angle + delta)
+      
+        new_distance = self.get_joint_dist(new_joint_angles, self.goal_location)
+
+        gradient = (new_distance - old_distance) / delta
+        
+        return gradient
+ 
     def kinematics(self):
         # Uses gradient descent to compute how much to move arms.
-        # TODO: compute gradient and then update the angles
         # reference: https://www.alanzucconi.com/2017/04/10/robotic-arms/
-
-        r = rospy.Rate(10)
-        r.sleep()
-    
-    def joint_dist(self):
+        # TODO: choose good learning rate
+        tau = 1 # learning rate
+        # TODO: choose good distance threshold
+        distance_threshold = 0.1
+        reached_goal = True
+        while reached_goal:
+            if self.get_joint_dist(self.current_joint_angles, self.goal_location) < distance_threshold:
+                print('reached goal')
+                reached_goal = False
+            else:
+                for i in (range(self.current_joint_angles) - 1): # make sure not to update last joint
+                    gradient = self.gradient_descent()
+                    self.current_joint_angles[i] -= tau * gradient
+                if self.get_joint_dist(self.current_joint_angles, self.goal_location) < distance_threshold:
+                    print('also reached goal')
+                    # move the arm to match the goal
+                    self.move_group_arm.go(self.current_joint_angles, wait=True)
+                    reached_goal = False
+            rospy.sleep(1)
+        rospy.spin()
+    '''      
+    def get_joint_dist(self, current_location, goal_location):
         # TODO: calculates current position from our current joint angles (forward kinematics)
         #   use forward kinematics equations: inputs = joint angles 2, 3, 4
         #   outputs: array of distances x, y, z
         # OR current pose of the arm, through a method; outputs: x, y, z
+        curr_location_array = np.asarray(current_location)
 
         # TODO: then get goal position from camera/lidar data
+        goal_location_array = np.asarray(goal_location)
+
         # TODO: compute distance between current pose and goal pose
-        
-        return
+        distance = numpy.linalg.norm(curr_location_array - goal_location_array) 
+
+        return distance
     
     def gradient_descent(self):
         # TODO: computes gradient based on joint distance of each joint.
         # distance from the target
         # reference: https://www.alanzucconi.com/2017/04/10/gradient-descent/
         delta = 1 # TODO: figure out good delta for gradient descent
-        distance = self.joint_dist()
+        old_distance = self.get_joint_dist(self.current_location, self.goal_location)
         new_joint_angles = []
         for angle in self.current_joint_angles:
             new_joint_angles.append(angle + delta)
@@ -89,10 +149,12 @@ class inverse_kinematics:
 
         # check get_current_pose() if it actually uses forward kinematics
         new_location = moveit_commander.move_group.MoveGroupCommander.get_current_pose()
-        self.joint_dist()
-        
-        return
+        new_distance = self.get_joint_dist(new_location, self.goal_location)
 
+        gradient = (new_distance - old_distance) / delta
+        
+        return gradient
+    
 
         # find the current position and the end effector position
             # inputting in joint angles and then getting current position from forwards kinematics
@@ -101,3 +163,4 @@ class inverse_kinematics:
             # distance given that we've moved the angles + delta
                 # input in the new joint angles and then get hypothetical new position from forward kinematics equations
                 # OR we have to get new_hypothetical_pose from get_current_pose AFTER making the robot move to those new angles
+    '''
