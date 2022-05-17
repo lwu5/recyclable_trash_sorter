@@ -37,10 +37,12 @@ class InverseKinematics:
 
         # Reset arm position
         
-        self.move_group_arm.go([0.0, 
-                                math.radians(-60.0), 
-                                math.radians(60.0),
-                                math.radians(0.0)], wait=True)
+        #self.move_group_arm.go([0.0, 
+        #                        math.radians(-60.0), 
+        #                        math.radians(60.0),
+        #                        math.radians(0.0)], wait=True)
+        angles = [-0.003, 0.313, -0.144, -0.476]
+        self.move_group_arm.go(angles, wait=True)
         self.move_group_gripper.go([0.01, 0.01], wait=True)
 
         #pose_target = geometry_msgs.msg.Pose()
@@ -51,7 +53,7 @@ class InverseKinematics:
         #group.move_group.MoveGroupCommander.set_pose_target(pose_target)
 
 
-        self.current_joint_angles = [0.0,math.radians(-60.0), math.radians(60.0), math.radians(0.0)] #moveit_commander.move_group.MoveGroupCommander.get_current_joint_values()
+        self.current_joint_angles = angles #moveit_commander.move_group.MoveGroupCommander.get_current_joint_values()
         self.images = None
         self.scans = None
         
@@ -72,17 +74,25 @@ class InverseKinematics:
 
     def get_current_location(self, angles):
         print('getting the current location')
-        l_1 = .128 # distance from first joint to second joint (m)
-        l_2 = .024 + .124 # distance from second joint to third joint ()
-        l_3 = .126 # distance from third joint to end effector (technically, our fourth fixed joint)
+        #l_1 = .128 # distance from first joint to second joint (m)
+        #l_2 = .024 + .124 # distance from second joint to third joint ()
+        #l_3 = .126 # distance from third joint to end effector (technically, our fourth fixed joint)
+        l_1 = 0.077
+        l_2 = 0.128
+        l_3 = 0.024 + 0.124
+        l_4 = 0.126
         j_1 = angles[0]
         j_2 = angles[1]
         j_3 = angles[2]
-        curr_x = (l_2 * math.cos(j_1) * math.cos(j_2)) + (l_3 * math.cos(j_1) * math.cos(j_2 + j_3))
-        curr_y = (l_2 * math.sin(j_1) * math.cos(j_2)) + (l_3 * math.sin(j_1) * math.cos(j_2 + j_3))
-        curr_z = l_1 + (l_2*math.sin(j_2)) + (l_3*math.sin(j_2 + j_3))
-        current_location = [curr_x, curr_y, curr_z]
+        j_4 = angles[3]
+        #curr_x = (l_2 * math.cos(j_1) * math.cos(j_2)) + (l_3 * math.cos(j_1) * math.cos(j_2 + j_3))
+        #curr_y = (l_2 * math.sin(j_1) * math.cos(j_2)) + (l_3 * math.sin(j_1) * math.cos(j_2 + j_3))
+        #curr_z = l_1 + (l_2*math.sin(j_2)) + (l_3*math.sin(j_2 + j_3))
+        curr_x = math.cos(j_1)*(l_2*math.cos(j_2)+l_3*math.cos(j_2 + j_3)) + l_4*math.cos(j_1)*math.cos(j_2+j_3+j_4)
+        curr_y = math.sin(j_1)*(l_2*math.cos(j_2)+l_3*math.cos(j_2 + j_3)) + l_4*math.sin(j_1)*math.cos(j_2+j_3+j_4)
+        curr_z = (l_1 + l_2*math.sin(j_2) + l_3*math.sin(j_2+j_3)) + l_4*math.sin(j_2+j_3+j_4)
 
+        current_location = [curr_x, curr_y, curr_z]
         return current_location
 
     def get_joint_dist(self, angles, goal_location):
@@ -104,7 +114,7 @@ class InverseKinematics:
         delta = 0.17 # TODO: figure out good delta for gradient descent
         old_distance = self.get_joint_dist(self.current_joint_angles, self.goal_location)
         new_joint_angles = []
-        for i in (range(len(self.current_joint_angles) - 1)): # make sure not to update the fourth angle
+        for i in (range(len(self.current_joint_angles))): # make sure not to update the fourth angle
             new_joint_angles.append(self.current_joint_angles[i] + delta)
       
         new_distance = self.get_joint_dist(new_joint_angles, self.goal_location)
@@ -124,12 +134,15 @@ class InverseKinematics:
         distance_threshold = 0.1
         reached_goal = False
         print('started kinematics calculations!')
+        print('checking the kinematics first')
+        print(self.get_current_location(self.current_joint_angles))
+        print('ok actually doing other things')
         while not reached_goal:
             if self.get_joint_dist(self.current_joint_angles, self.goal_location) < distance_threshold:
                 print('reached goal')
                 reached_goal = True
             else:
-                for i in (range(len(self.current_joint_angles) - 1)): # make sure not to update last joint
+                for i in (range(len(self.current_joint_angles))): # make sure not to update last joint
                     gradient = self.gradient_descent()
                     self.current_joint_angles[i] -= tau * gradient
                 #self.move_group_arm.go(self.current_joint_angles, wait=True)
