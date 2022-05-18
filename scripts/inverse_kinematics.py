@@ -42,6 +42,7 @@ class InverseKinematics:
         #                        math.radians(60.0),
         #                        math.radians(0.0)], wait=True)
         angles = [-0.003, 0.313, -0.144, -0.476]
+        # angles = [0, 0, 0 , 0]
         self.move_group_arm.go(angles, wait=True)
         self.move_group_gripper.go([0.01, 0.01], wait=True)
 
@@ -73,16 +74,20 @@ class InverseKinematics:
             print('whatever')
 
     def get_current_location(self, angles):
-        l_1 = .077/2 # distance from second joint to third joint (m)
-        l_2 = .130 # distance from third joint to fourth joint (m)
-        l_3 = .124 # distance from fourth joint to end effector (m)
-        l_4 = .126
+        # turtlebot height
+        turtlebot_height = .141
+        # block difference angle
+        block = math.radians(11)
+        l_1 = .042 # distance from first joint to second joint (m)
+        l_2 = .130 # distance from second joint to third joint (m)
+        l_3 = .124 # distance from third joint to fourth joint (m)
+        l_4 = .126 # distance from fourth joint to end effector (m)
         #l_1 = 0.077
         #l_2 = 0.128
         #l_3 = 0.024 + 0.124
         #l_4 = 0.126
         j_1 = angles[0]
-        j_2 = angles[1]
+        j_2 = angles[1] - block
         j_3 = angles[2]
         j_4 = angles[3]
         #curr_x = (l_2 * math.cos(j_1) * math.cos(j_2)) + (l_3 * math.cos(j_1) * math.cos(j_2 + j_3))
@@ -91,7 +96,9 @@ class InverseKinematics:
         curr_x = math.cos(j_1)*(l_2*math.cos(j_2)+l_3*math.cos(j_2 + j_3)) + l_4*math.cos(j_1)*math.cos(j_2+j_3+j_4)
         curr_y = math.sin(j_1)*(l_2*math.cos(j_2)+l_3*math.cos(j_2 + j_3)) + l_4*math.sin(j_1)*math.cos(j_2+j_3+j_4)
         curr_z = (l_1 + l_2*math.sin(j_2) + l_3*math.sin(j_2+j_3)) + l_4*math.sin(j_2+j_3+j_4)
-        curr_z += 0.077/2 # to offset for the problematic angle
+
+        # .03 is the measurement of the block between the first joint and the turtlebot height.
+        curr_z += 0.035 + turtlebot_height # to offset for the problematic angle
 
         current_location = [curr_x, curr_y, curr_z]
         return current_location
@@ -140,23 +147,25 @@ class InverseKinematics:
         
         while not reached_goal:
             print('first one')
-            print(self.get_current_location(self.current_joint_angles))
+            print("current location:", self.get_current_location(self.current_joint_angles))
             if self.get_joint_dist(self.current_joint_angles, self.goal_location) <= distance_threshold:
                 print('reached goal')
                 reached_goal = True
             else:
-                for i in (range(len(self.current_joint_angles))): # make sure not to update last joint
-                    gradient = self.gradient_descent(i)
-                    self.current_joint_angles[i] -= tau * gradient
-                self.move_group_arm.go(self.current_joint_angles, wait=True)
-                rospy.sleep(1)
-                print('update after gradient descent')
-                print(self.get_current_location(self.current_joint_angles))
-                if self.get_joint_dist(self.current_joint_angles, self.goal_location) < distance_threshold:
-                    print('also reached goal')
-                    # move the arm to match the goal
-                    self.move_group_arm.go(self.current_joint_angles, wait=True)
-                    reached_goal = True
+                return
+                # for i in (range(len(self.current_joint_angles))): # make sure not to update last joint
+                #     gradient = self.gradient_descent(i)
+                #     self.current_joint_angles[i] -= tau * gradient
+                # self.move_group_arm.go(self.current_joint_angles, wait=True)
+                # rospy.sleep(1)
+                # print('update after gradient descent')
+                # print(self.get_current_location(self.current_joint_angles))
+                # if self.get_joint_dist(self.current_joint_angles, self.goal_location) < distance_threshold:
+                #     print('also reached goal')
+                #     # move the arm to match the goal
+                #     self.move_group_arm.go(self.current_joint_angles, wait=True)
+                #     reached_goal = True
+                # return
             rospy.sleep(0.1)
         rospy.spin()
 
