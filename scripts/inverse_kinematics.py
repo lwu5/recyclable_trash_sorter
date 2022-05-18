@@ -33,7 +33,7 @@ class InverseKinematics:
         # absolute position of end effector
         #self.current_location = moveit_commander.move_group.MoveGroupCommander.get_current_pose()
 
-        self.goal_location = [0.230, 0.5, 0.288]
+        self.goal_location = [0.230, -0.001, 0.288]
 
         # Reset arm position
         
@@ -141,15 +141,15 @@ class InverseKinematics:
         while not reached_goal:
             print('first one')
             print(self.get_current_location(self.current_joint_angles))
-            if self.get_joint_dist(self.current_joint_angles, self.goal_location) < distance_threshold:
+            if self.get_joint_dist(self.current_joint_angles, self.goal_location) <= distance_threshold:
                 print('reached goal')
                 reached_goal = True
             else:
                 for i in (range(len(self.current_joint_angles))): # make sure not to update last joint
                     gradient = self.gradient_descent(i)
                     self.current_joint_angles[i] -= tau * gradient
-                #self.move_group_arm.go(self.current_joint_angles, wait=True)
-                #rospy.sleep(1)
+                self.move_group_arm.go(self.current_joint_angles, wait=True)
+                rospy.sleep(1)
                 print('update after gradient descent')
                 print(self.get_current_location(self.current_joint_angles))
                 if self.get_joint_dist(self.current_joint_angles, self.goal_location) < distance_threshold:
