@@ -33,7 +33,8 @@ class InverseKinematics:
         # absolute position of end effector
         #self.current_location = moveit_commander.move_group.MoveGroupCommander.get_current_pose()
 
-        self.goal_location = [0.230, -0.001, 0.288]
+        self.goal_location = [0.195, 0, 0.296]
+        print('this should be the first location', self.goal_location)
 
         # Reset arm position
         
@@ -41,8 +42,8 @@ class InverseKinematics:
         #                        math.radians(-60.0), 
         #                        math.radians(60.0),
         #                        math.radians(0.0)], wait=True)
-        angles = [-0.003, 0.313, -0.144, -0.476]
-        # angles = [0, 0, 0 , 0]
+        angles = [-0.721, 0.601, 0.086, -0.265]
+        #angles = [0, 0, 0, 0]
         self.move_group_arm.go(angles, wait=True)
         self.move_group_gripper.go([0.01, 0.01], wait=True)
 
@@ -75,9 +76,11 @@ class InverseKinematics:
 
     def get_current_location(self, angles):
         # turtlebot height
-        turtlebot_height = .141
+        
+        turtlebot_height = .141 # height of turtlebot
         # block difference angle
-        block = math.radians(11)
+        block = math.atan(.024/.130)
+        print('block', block)
         l_1 = .042 # distance from first joint to second joint (m)
         l_2 = .130 # distance from second joint to third joint (m)
         l_3 = .124 # distance from third joint to fourth joint (m)
@@ -87,19 +90,32 @@ class InverseKinematics:
         #l_3 = 0.024 + 0.124
         #l_4 = 0.126
         j_1 = angles[0]
-        j_2 = angles[1] - block
-        j_3 = angles[2]
-        j_4 = angles[3]
+        j_2 = angles[1] - block + math.radians(90)
+        j_3 = angles[2] - j_2 #math.radians(90)
+        j_4 = angles[3] 
+        print('the adjusted angles', [j_1, j_2, j_3, j_4])
         #curr_x = (l_2 * math.cos(j_1) * math.cos(j_2)) + (l_3 * math.cos(j_1) * math.cos(j_2 + j_3))
         #curr_y = (l_2 * math.sin(j_1) * math.cos(j_2)) + (l_3 * math.sin(j_1) * math.cos(j_2 + j_3))
         #curr_z = l_1 + (l_2*math.sin(j_2)) + (l_3*math.sin(j_2 + j_3))
         curr_x = math.cos(j_1)*(l_2*math.cos(j_2)+l_3*math.cos(j_2 + j_3)) + l_4*math.cos(j_1)*math.cos(j_2+j_3+j_4)
         curr_y = math.sin(j_1)*(l_2*math.cos(j_2)+l_3*math.cos(j_2 + j_3)) + l_4*math.sin(j_1)*math.cos(j_2+j_3+j_4)
-        curr_z = (l_1 + l_2*math.sin(j_2) + l_3*math.sin(j_2+j_3)) + l_4*math.sin(j_2+j_3+j_4)
-
+        curr_z = l_1 + l_2*math.sin(j_2) + l_3*math.sin(j_2+j_3) + l_4*math.sin(j_2+j_3+j_4)
+        print('first term', l_1)
+        print('second_term', l_2*math.sin(j_2))
+        print('third_term', l_3*math.sin(j_2+j_3))
+        print('fourth_term', l_4*math.sin(j_2+j_3+j_4))
         # .03 is the measurement of the block between the first joint and the turtlebot height.
+        print('curr_z before adding tb_height', curr_z)
         curr_z += 0.035 + turtlebot_height # to offset for the problematic angle
+        print('curr_z after adding tb height', curr_z)
 
+        #print('first term', math.cos(j_1)*(l_2*math.cos(j_2)))
+        #print('second_term', math.cos(j_1)*(l_3*math.cos(j_2+j_3)))
+        #print('third_term', math.cos(j_1)*(l_4*math.cos(j_2+j_3+j_4)))
+        #print('offset', curr_x - .195)
+        curr_x -= 0.075 # to offset for the fact that x = 0 is around the center of the lidar scanner
+        #print('curr_x after accounting for tbot front edge', curr_x)
+        
         current_location = [curr_x, curr_y, curr_z]
         return current_location
 
