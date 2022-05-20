@@ -33,7 +33,7 @@ class InverseKinematics:
         # absolute position of end effector
         #self.current_location = moveit_commander.move_group.MoveGroupCommander.get_current_pose()
 
-        self.goal_location = [0.195, 0, 0.296]
+        self.goal_location = [0, 0, 0]
         print('this should be the first location', self.goal_location)
 
         # Reset arm position
@@ -42,8 +42,11 @@ class InverseKinematics:
         #                        math.radians(-60.0), 
         #                        math.radians(60.0),
         #                        math.radians(0.0)], wait=True)
-        angles = [-0.721, 0.601, 0.086, -0.265]
-        #angles = [0, 0, 0, 0]
+        #angles = [-0.721, 0.601, 0.086, -0.265]
+        angles = [0, 0, 0, 0]
+        #angles = [.495, .066, .048, .430]
+        #angles = [-.555, .403, .187, .270]
+
         self.move_group_arm.go(angles, wait=True)
         self.move_group_gripper.go([0.01, 0.01], wait=True)
 
@@ -89,10 +92,15 @@ class InverseKinematics:
         #l_2 = 0.128
         #l_3 = 0.024 + 0.124
         #l_4 = 0.126
-        j_1 = angles[0]
-        j_2 = angles[1] - block + math.radians(90)
-        j_3 = angles[2] - j_2 #math.radians(90)
-        j_4 = angles[3] 
+        #j_1 = -1 * angles[0]
+        #j_2 = -1 * (angles[1] - block - math.radians(90))
+        #j_3 = -1 * (angles[2] - j_2)
+        #j_4 = -1 * (angles[3])
+        j_1 = -1*(angles[0])
+        j_2 = math.radians(90) - (angles[1] + block)
+        j_3 = -1*(angles[2] + math.radians(90))
+        j_4 = -1*(angles[3])
+
         print('the adjusted angles', [j_1, j_2, j_3, j_4])
         #curr_x = (l_2 * math.cos(j_1) * math.cos(j_2)) + (l_3 * math.cos(j_1) * math.cos(j_2 + j_3))
         #curr_y = (l_2 * math.sin(j_1) * math.cos(j_2)) + (l_3 * math.sin(j_1) * math.cos(j_2 + j_3))
@@ -116,6 +124,7 @@ class InverseKinematics:
         curr_x -= 0.075 # to offset for the fact that x = 0 is around the center of the lidar scanner
         #print('curr_x after accounting for tbot front edge', curr_x)
         
+        curr_y = curr_y *-1
         current_location = [curr_x, curr_y, curr_z]
         return current_location
 
@@ -155,7 +164,7 @@ class InverseKinematics:
         # reference: https://www.alanzucconi.com/2017/04/10/robotic-arms/
         rospy.sleep(3)
         # TODO: choose good learning rate
-        tau = 0.01 # learning rate
+        tau = 0.05 # learning rate
         # TODO: choose good distance threshold
         distance_threshold = 0.1
         reached_goal = False
@@ -168,21 +177,21 @@ class InverseKinematics:
                 print('reached goal')
                 reached_goal = True
             else:
-                return
-                # for i in (range(len(self.current_joint_angles))): # make sure not to update last joint
-                #     gradient = self.gradient_descent(i)
-                #     self.current_joint_angles[i] -= tau * gradient
+                
+                 for i in (range(len(self.current_joint_angles))): # make sure not to update last joint
+                     gradient = self.gradient_descent(i)
+                     self.current_joint_angles[i] -= tau * gradient
                 # self.move_group_arm.go(self.current_joint_angles, wait=True)
                 # rospy.sleep(1)
-                # print('update after gradient descent')
-                # print(self.get_current_location(self.current_joint_angles))
-                # if self.get_joint_dist(self.current_joint_angles, self.goal_location) < distance_threshold:
-                #     print('also reached goal')
+                 print('update after gradient descent')
+                 print(self.get_current_location(self.current_joint_angles))
+                 if self.get_joint_dist(self.current_joint_angles, self.goal_location) < distance_threshold:
+                     print('also reached goal')
                 #     # move the arm to match the goal
                 #     self.move_group_arm.go(self.current_joint_angles, wait=True)
-                #     reached_goal = True
+                     reached_goal = True
                 # return
-            rospy.sleep(0.1)
+            rospy.sleep(0.01)
         rospy.spin()
 
 if __name__ == "__main__":
