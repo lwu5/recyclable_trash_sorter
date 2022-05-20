@@ -14,13 +14,17 @@ class Robot_Mover:
 
         rospy.init_node("Robot_Mover")
 
-        self.scan_sub = rospy.Subscriber('/scan', LaserScan, self.scan_callback)
+        self.bridge = cv_bridge.CvBridge()
 
-        self.vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
+        cv2.namedWindow("window", 1)
 
         self.image_sub = rospy.Subscriber('camera/rgb/image_raw', Image, self.image_callback)
 
         rospy.sleep(1)
+
+        self.scan_sub = rospy.Subscriber('/scan', LaserScan, self.scan_callback)
+
+        self.vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
 
         self.images = None
         self.scans = None
@@ -28,9 +32,11 @@ class Robot_Mover:
         self.front_distances = [1.0 for _ in range(5)]
         self.front_distance = 1.0
         self.current_color = None
-        self.bridge = cv_bridge.CvBridge()
+        
         self.colored_centers = [(-1, -1) for _ in range(3)]
         self.is_run = True
+        self.front_distances = [1.0 for _ in range(5)]
+        self.front_distance = 1.0
         print('finished initializing!')
 
     def image_callback(self, msg):
@@ -45,7 +51,10 @@ class Robot_Mover:
         #hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
         self.find_goal_location(image)
         self.set_colored_object_centers(image)
-        self.images = image
+        if image == None:
+            print("there is no image")
+        else:
+            self.images = image
 
     def scan_callback(self, data):
         self.front_distances = [data.ranges[0]] + self.front_distances[1:]
@@ -88,12 +97,11 @@ class Robot_Mover:
 
     def find_color(self):
         color_id = 0
-        print(self.colored_centers)
         center = self.colored_centers[color_id]
-        print(center)
         # go in front of object
         r = rospy.Rate(10)
         if self.images is not None:
+            print("reaches here")
             while not (abs(center[1] - self.img_width / 2) < 10 and abs(self.front_distance - 0.2) < 0.02):
                 center = self.colored_centers[color_id]
                 # object is not detected, find another color
@@ -117,14 +125,13 @@ class Robot_Mover:
 
  
     def run(self):
-        self.is_run = True
-        while self.is_run:
-            self.find_color()
+        # self.is_run = True
+        # while self.is_run:
+        #     self.find_color()
 
         rospy.sleep(3)
 
 if __name__ == "__main__":
     node = Robot_Mover()
     sleep(0.1)
-    node.find_color()
     node.run()
