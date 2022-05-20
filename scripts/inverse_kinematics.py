@@ -35,6 +35,7 @@ class InverseKinematics:
 
         self.goal_location = [0, 0, 0]
         print('this should be the first location', self.goal_location)
+        
 
         # Reset arm position
         
@@ -73,9 +74,47 @@ class InverseKinematics:
     def find_goal_location(self):
         # TODO: from scan and image data, find the end position that we want the robot arm to move to
         if self.images is not None and self.scans is not None:
-            # implement object recognition + transformation logic
-            # self.goal_location = _________
-            print('whatever')
+            # setting the angular z value parameters to explore the environment in the angular direction
+            self.movement.angular.z = 0.2
+            image = self.bridge.imgmsg_to_cv2(self.images,desired_encoding='bgr8') # loading the color image
+            hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+            
+            #TODO: change this so that it's referring to objects later
+            color = 'pink'
+            #setting up the hsv ranges for the different colored objects 
+            if color == 'blue':
+                lower_bound = numpy.array([95, 90, 100]) 
+                upper_bound = numpy.array([105, 110, 150]) 
+            elif color == 'pink':
+                lower_bound= numpy.array([155, 140, 120]) 
+                upper_bound= numpy.array([165, 160, 170]) 
+            elif color == 'green':
+                lower_bound = numpy.array([30, 130, 90]) 
+                upper_bound = numpy.array([40, 150, 150]) 
+            
+            # erases all the pixels in the image that aren't in that range
+            mask = cv2.inRange(hsv, lower_bound, upper_bound)
+            
+            # determines the center of the colored pixels
+            M = cv2.moments(mask)
+
+            #dimensions of the image, used later for proportional control 
+            h, w, d = image.shape
+
+
+            # if it detected the color
+            if M['m00'] > 0:
+                # center of the colored pixels in the image
+                cx = int(M['m10']/M['m00'])
+                cy = int(M['m01']/M['m00'])
+                
+                # a red circle is visualized in the debugging window to indicate
+                # the center point of the colored pixels
+                cv2.circle(image, (cx, cy), 20, (0,0,255), -1)
+                # proportional control to orient towards the colored object
+            cv2.imshow("window", image)
+            cv2.waitKey(3)
+
 
     def get_current_location(self, angles):
         # turtlebot height
