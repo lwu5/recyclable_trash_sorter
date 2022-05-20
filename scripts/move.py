@@ -20,12 +20,17 @@ class Robot_Mover:
 
         self.image_sub = rospy.Subscriber('camera/rgb/image_raw', Image, self.image_callback)
 
+        rospy.sleep(1)
+
         self.images = None
         self.scans = None
-        
+        self.img_width = 100
+        self.front_distances = [1.0 for _ in range(5)]
+        self.front_distance = 1.0
         self.current_color = None
+        self.bridge = cv_bridge.CvBridge()
         self.colored_centers = [(-1, -1) for _ in range(3)]
-        
+        self.is_run = True
         print('finished initializing!')
 
     def image_callback(self, msg):
@@ -38,12 +43,10 @@ class Robot_Mover:
 
         image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
         #hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-
-        cv2.imshow("window", image)
-        cv2.waitKey(3)
-
+        self.find_goal_location(image)
         self.set_colored_object_centers(image)
-        
+        self.images = image
+
     def scan_callback(self, data):
         self.front_distances = [data.ranges[0]] + self.front_distances[1:]
         self.front_distance = np.mean(self.front_distances)
@@ -75,6 +78,9 @@ class Robot_Mover:
                 cv2.circle(image, (cx, cy), 20, (0,0,255), -1)
 
                 centers.append((cx, cy))
+ 
+                cv2.imshow("window", image)
+                cv2.waitKey(3)
             else:
                 centers.append((-1, -1))
 
@@ -82,30 +88,39 @@ class Robot_Mover:
 
     def find_color(self):
         color_id = 0
+        print(self.colored_centers)
         center = self.colored_centers[color_id]
+        print(center)
         # go in front of object
         r = rospy.Rate(10)
-        while not (abs(center[1] - self.img_width / 2) < 10 and abs(self.front_distance - 0.2) < 0.02):
-            center = self.colored_centers[color_id]
-            # object is not detected, find another color
-            while center == (-1, -1):
-                if color_id != 3:
-                    color_id += 1
-                    center = self.colored_centers[color_id]
-                else:
+        if self.images is not None:
+            while not (abs(center[1] - self.img_width / 2) < 10 and abs(self.front_distance - 0.2) < 0.02):
+                center = self.colored_centers[color_id]
+                # object is not detected, find another color
+                while center == (-1, -1):
+                    if color_id != 3:
+                        color_id += 1
+                        print('is it here?')
+                        center = self.colored_centers[color_id]
+                    else:
+                        lin = Vector3(0.0, 0.0, 0.0)
+                        ang = Vector3(0.0, 0.0, (self.img_width / 2 - center[1]) * 0.5)
+                        color_id = 0
+                if center != (-1, -1):
+                    self.current_color = color_id
                     lin = Vector3(0.0, 0.0, 0.0)
                     ang = Vector3(0.0, 0.0, (self.img_width / 2 - center[1]) * 0.5)
-                    color_id = 0
-            if center != (-1, -1):
-                self.current_color = color_id
-                lin = Vector3(0.0, 0.0, 0.0)
-                ang = Vector3(0.0, 0.0, (self.img_width / 2 - center[1]) * 0.5)
-            twist = Twist(linear=lin, angular=ang)
-            self.vel_pub.publish(twist)
-            r.sleep()
+                    self.is_run = False
+                twist = Twist(linear=lin, angular=ang)
+                self.vel_pub.publish(twist)
+                r.sleep()
 
  
     def run(self):
+        self.is_run = True
+        while self.is_run:
+            self.find_color()
+
         rospy.sleep(3)
 
 if __name__ == "__main__":
