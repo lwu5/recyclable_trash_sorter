@@ -20,7 +20,7 @@ class Robot_Mover:
 
         self.vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
 
-        self.image_sub = rospy.Subscriber('camera/rgb/image_raw', Image, self.image_callback)
+        self.image_sub = rospy.Subscriber('camera/rgb/image_raw', Image, self.image_callback, queue_size=10)
 
         self.images = None
         self.img_width = 100
@@ -49,9 +49,7 @@ class Robot_Mover:
         # cv2.imshow("window", mask)
         cv2.waitKey(3)
 
-        print(self.image)
-
-        self.find_goal_location(self.image)
+        # self.find_goal_location(self.image)
 
         rospy.sleep(3)
 
@@ -100,7 +98,11 @@ class Robot_Mover:
             else:
                 centers.append((-1, -1))
 
+        self.images = image
         self.colored_centers = centers
+        print("colored centers: ", self.colored_centers)
+        print("self.images from color centers function", self.images)
+        print("self.images from color centers function", image)
 
     def find_color(self):
         print("reaches find_color function")
@@ -136,8 +138,7 @@ class Robot_Mover:
 
  
     def run(self):
-        # self.is_run = True
-        # while self.is_run:
+
         self.find_color()
 
         rospy.sleep(1)

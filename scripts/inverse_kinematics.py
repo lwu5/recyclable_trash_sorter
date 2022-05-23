@@ -8,6 +8,8 @@ import math
 
 from sensor_msgs.msg import Image, LaserScan
 
+from turtlebot3_msgs.msg import SensorState
+
 from geometry_msgs.msg import Twist, Vector3
 
 from time import sleep
@@ -61,7 +63,8 @@ class InverseKinematics:
         self.images = None
         self.scans = None
 
-        self.button_state = 0
+        
+        self.is_metal = 0 # 1 = metal
         
         print('finished initializing!')
 
@@ -116,10 +119,14 @@ class InverseKinematics:
             cv2.waitKey(3)
 
     def button_callback(self, data):
-        
-        self.button_state = (int)data.illumination
 
-        return
+        if (data.illumination == 2.0):
+            self.is_metal = 0
+        elif (data.illumination == 1.0):
+            self.is_metal = 1
+            print("button pressed!")
+        else:
+            print("Sensor ERROR!")
 
 
     def get_current_location(self, angles):
