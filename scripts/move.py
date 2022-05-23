@@ -33,7 +33,7 @@ class Robot_Mover:
         print('finished initializing!')
 
     def image_callback(self, msg):
-        if not msg.data:
+        if not msg:
             print("no image")
             return
         print("there is an image")
