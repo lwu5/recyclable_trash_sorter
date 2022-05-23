@@ -104,8 +104,13 @@ class InverseKinematics:
     def scan_callback(self, data):
         self.scans = data.ranges
     
-    def find_goal_location(self):
+    def find_object(self):
         # TODO: from scan and image data, find the end position that we want the robot arm to move to
+        if True:
+            self.goal_location = [0.3,0.1,0.3]
+            self.object_found = 1
+        return
+
         if self.images is not None and self.scans is not None:
             # setting the angular z value parameters to explore the environment in the angular direction
             self.movement.angular.z = 0.2
@@ -147,7 +152,6 @@ class InverseKinematics:
                 # proportional control to orient towards the colored object
             cv2.imshow("window", image)
             cv2.waitKey(3)
-
     def find_tag(self):
         # Now that the robot has picked up the object, this is the method to find the correct AR tag 
         # using the aruco AR tag library. A numerical parameter (tag, can be 1, 2, or 3) specifies which
@@ -405,7 +409,7 @@ class InverseKinematics:
         self.object_picked_up = 1
 
 
-     def drop_object(self):
+    def drop_object(self):
         # once the robot has found the correct tag, method to drop the object 
 
         # TODO: potentially could use
@@ -440,7 +444,7 @@ class InverseKinematics:
         # reference: https://www.alanzucconi.com/2017/04/10/robotic-arms/
         rospy.sleep(3)
         
-        while len(self.objects_list) > 0: 
+        while len(self.object_list) > 0: 
             if not self.object_found: 
                 self.find_object()
             elif not self.object_picked_up: # include finding the goal location as well
@@ -452,7 +456,7 @@ class InverseKinematics:
             # popping off the list of remaining actions to take once the action has been completed,
             # resetting state variables
             else:
-                self.objects_list.pop(0)
+                self.object_list.pop(0)
                 self.object_found = 0
                 self.object_picked_up = 0
                 self.tag_found = 0
