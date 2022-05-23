@@ -40,7 +40,6 @@ class Robot_Mover:
         print('finished initializing!')
 
     def image_callback(self, img):
-        print("image being callback")
         if img is None:
             print("there is no image")
         self.images = img
