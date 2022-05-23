@@ -14,11 +14,22 @@ from geometry_msgs.msg import Twist, Vector3
 
 from time import sleep
 
+# dictionary that contains the AR tags info
+aruco_dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_50)
+
 
 class InverseKinematics:
     def __init__(self):
+        
 
         rospy.init_node("inverse_kinematics")
+
+        # set up ROS / OpenCV bridge
+        self.bridge = cv_bridge.CvBridge()
+
+        # initalize the debugging window
+        cv2.namedWindow("window", 1)
+
 
         self.scan_sub = rospy.Subscriber('/scan', LaserScan, self.scan_callback)
 
@@ -27,6 +38,12 @@ class InverseKinematics:
         self.vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
 
         self.image_sub = rospy.Subscriber('camera/rgb/image_raw', Image, self.image_callback)
+
+
+        # initializing movement publishing
+        self.movement = Twist(linear=Vector3(), angular=Vector3())
+        # for proportional control, the minimum distance away objects should be
+        self.min_dist_away = .5
 
         # the interface to the group of joints making up the turtlebot3
         # openmanipulator arm
@@ -43,6 +60,7 @@ class InverseKinematics:
         self.goal_location = [0.3, 0.1, 0.3]
         
 
+        # TODO: ALWAYS INITIALIZE ARM TO BE ORIENTED UP AFTER EVERY PICKUP MOTION
         # Reset arm position
         #angles = [-0.721, 0.601, 0.086, -0.265]
         angles = [0, -0.5, 0, 0]
@@ -63,8 +81,20 @@ class InverseKinematics:
         self.images = None
         self.scans = None
 
-        
+        #control variables to keep track of the state the robot is in 
+        self.object_found = 0
+        self.gradient_descent_complete = 0
+        self.object_picked_up = 0
+        self.tag_found = 0
+        self.object_dropped = 0
+
+
+        # indication to start moving towards an object or AR tag
+        self.start_moving_forward = 0
+
         self.is_metal = 0 # 1 = metal
+
+        self.object_list = [1, 2, 3]
         
         print('finished initializing!')
 
@@ -117,6 +147,112 @@ class InverseKinematics:
                 # proportional control to orient towards the colored object
             cv2.imshow("window", image)
             cv2.waitKey(3)
+
+    def find_tag(self):
+        # Now that the robot has picked up the object, this is the method to find the correct AR tag 
+        # using the aruco AR tag library. A numerical parameter (tag, can be 1, 2, or 3) specifies which
+        # tag to look for, and then this method makes the robot recognize that tag with camera data and then move 
+        # towards it sufficently close with LiDAR data
+        
+        # put all the nonmetal objects at AR tag 1, metal objects at AR tag 2 
+        if self.is_metal == 0:
+            tag = 1
+        else:
+            tag = 0
+
+        # explore the environment by turning around to find tag
+        self.movement.angular.z = 0.1
+                
+        # check to see that images have been collected from the image_callback
+        if self.images is not None:
+            # AR tag recognition requires greyscale images
+            grayscale_image = self.bridge.imgmsg_to_cv2(self.images,desired_encoding='mono8')
+            
+            # corners is a 4D array of shape (n, 4, 2), where n is the number of tags detected
+            # each entry is a set of four (x, y) pixel coordinates corresponding to the
+            # location of a tag's corners in the image
+            # ids is a 2D array of shape (n, 1)
+            # each entry is the id of a detected tag in the same order as in corners
+            corners, ids, rejected_points = cv2.aruco.detectMarkers(grayscale_image, aruco_dict)
+            
+            #if it finds ids and corners, matching the tag from the best policy to the tag it finds 
+            if ids is not None and len(corners) != 0:
+                ids = ids[0]
+                corners = corners[0]
+                tag_idx = np.argwhere(ids == tag)
+                # moving toward the correct tag if it was detected
+                if tag_idx.size > 0:
+                    tag_idx = tag_idx[0]
+                    # extracting the x, y coordinates of the tag's corner locations in the camera image
+                    left_upper_corner = corners[tag_idx,0,:]
+                    right_upper_corner = corners[tag_idx,1,:]
+                    right_bottom_corner = corners[tag_idx,2,:]
+                    left_bottom_corner = corners[tag_idx,3,:]
+                    
+                    # width and height of the AR tag
+                    width = right_upper_corner[0,0] - left_upper_corner[0,0]
+                    height = left_upper_corner[0,1] - left_bottom_corner[0,1]
+                    
+                    # extract the center coordinates of the tag
+                    cx = int(left_upper_corner[0,0] + width/2)
+                    cy = int(left_upper_corner[0,1] + height/2)
+                    cv2.circle(grayscale_image, (cx,cy),20,(0,0,255),-1)
+                    # shape of the entire grayscale image
+                    h, w  = grayscale_image.shape
+                    
+                    # proportional control to orient towards the tag
+                    angular_error = ((w/2) - (cx))
+                    #angular k values found through testing 
+                    angular_k = 0.001
+                    self.movement.angular.z = angular_k * angular_error
+                    
+                    #if the front of the robot is facing the tag within a certain angular tolerance, 
+                    # then it is sufficiently centered in the robot's camera view and 
+                    # should start moving forward towards the tag 
+                    tol = 30
+                    if abs(angular_error) < tol:
+                        self.start_moving_forward = 1
+
+                    # if the bot should move forward, should use LiDAR scan data to figure out when to 
+                    # stop moving if sufficiently close
+                    if self.start_moving_forward:
+                        # extracting distances of the objects or tags located 
+                        # -10 to 10 degrees in front of the bot
+                        print('should start moving forward')
+                        if self.scans is not None:
+                            ranges = np.asarray(self.scans)
+                            ranges[ranges == 0.0] = np.nan
+                            slice_size = int(20)
+                            first_half_angles = slice(0,int(slice_size/2))
+                            second_half_angles = slice(int(-slice_size/2),0)
+                    
+                            # this is the mean distance of likely the tag that has been detected from the robot
+                            slice_mean = np.nanmean(np.append(ranges[first_half_angles],ranges[second_half_angles]))
+                            if np.isnan(slice_mean):
+                                # if all LiDAR measurements invalid (0.0) then the mean is NaN, stop moving forward
+                                self.movement.linear.x = 0
+                            else:
+                                linear_error = slice_mean - self.min_dist_away 
+                                
+                                # setting a constant linear velocity to move towards the tag, until it reaches within a certain tolerance 
+                                self.movement.linear.x = 0.04
+                                linear_tol = 0.005
+                                # if tag found and bot is sufficiently close to it, change state variables to indicate that this has
+                                # occurred and stop motion to initiate next step of robot movement (dropping)
+                                if linear_error < linear_tol:
+                                    self.start_moving_forward = 0
+                                    self.tag_found = 1
+                                    self.movement.linear.x = 0
+                                    self.movement.angular.z = 0
+                    else:
+                        self.movement.linear.x = 0.0
+            # to visualize the robot localizing to tags         
+            cv2.imshow("window", grayscale_image)
+            cv2.waitKey(3)
+
+        # publish the movement
+        self.vel_pub.publish(self.movement) 
+
 
     def button_callback(self, data):
 
@@ -192,14 +328,13 @@ class InverseKinematics:
         distance = np.linalg.norm(curr_location_array - goal_location_array) 
         return distance
     
-    def clamp_angles(self, angle_idx):
-        if self.current_joint_angles[angle_idx] < self.angle_min[angle_idx]:
-            self.current_joint_angles[angle_idx] = self.angle_min[angle_idx]
-        elif self.current_joint_angles[angle_idx] > self.angle_max[angle_idx]:
-            self.current_joint_angles[angle_idx] = self.angle_max[angle_idx]
+    def clamp_angles(self, angles, angle_idx):
+        if angles[angle_idx] < self.angle_min[angle_idx]:
+            angles[angle_idx] = self.angle_min[angle_idx]
+        elif angles[angle_idx] > self.angle_max[angle_idx]:
+            angles[angle_idx] = self.angle_max[angle_idx]
 
-
-    def gradient_descent(self, angle_idx):
+    def partial_gradient(self, angle_idx):
         # Computes gradient based on joint distance of each joint.
         # distance from the target
         # reference: https://www.alanzucconi.com/2017/04/10/gradient-descent/
@@ -216,17 +351,125 @@ class InverseKinematics:
         # changing back the angle 
         self.current_joint_angles[angle_idx] = old_joint_angle
         return gradient
- 
+
+    def do_gradient_descent(self, angles, goal_location):
+
+        tau = 0.05 # learning rate
+        distance_threshold = 0.075 # threshold for the arm to move to the goal location (object)
+
+        # checking if it is within the goal location
+        if self.get_joint_dist(angles, goal_location) <= distance_threshold:
+                print('reached goal')
+                #self.gradient_descent_complete = True
+        else:
+            while self.get_joint_dist(angles, goal_location) > distance_threshold:
+                for i in (range(len(angles))): 
+                    gradient = self.partial_gradient(i)
+                    angles[i] -= tau * gradient
+                    # clamping to make sure that angle values do not go out of bounds
+                    self.clamp_angles(angles, i)
+                #print(self.get_current_location(self.current_joint_angles))
+                if self.get_joint_dist(angles, goal_location) < distance_threshold:
+                    print('converged')
+                    # move the arm to match the goal
+                    #self.move_group_arm.go(angles, wait=True)
+                    #self.gradient_descent_complete = True
+                # sleep to move the arm
+                #rospy.sleep(5)
+    
+    def pick_up_object(self):
+
+        # run gradient descent after finding the right xyz to pick up the object
+        self.do_gradient_descent(self.current_joint_angles, self.goal_location) # also takes into account picking up object
+        
+        # after gradient descent has converged, move the angles to the location for pickup
+        self.move_group_arm.go(self.current_joint_angles, wait=True)
+        rospy.sleep(5)
+
+        # parameters for the gripper joint (to grasp) found through trial and error testing 
+        gripper_joint_goal = [-0.006, -0.006]
+        self.move_group_gripper.go(gripper_joint_goal, wait=True)
+        self.move_group_gripper.stop()
+
+        rospy.sleep(1)
+
+        # move the arm back up 
+        # parameters for the arm joint (to lift up the object) found through trial and error testing 
+        arm_joint_goal = [0.0, -.7, .1, -0.65]
+        self.move_group_arm.go(arm_joint_goal, wait=True)
+        self.move_group_arm.stop()
+
+        # TODO: potentially could use
+        #self.do_gradient_descent(self.current_joint_angles, [0.1,0,0.4]) # also takes into account picking up object, specify an xyz
+
+        self.object_picked_up = 1
+
+
+     def drop_object(self):
+        # once the robot has found the correct tag, method to drop the object 
+
+        # TODO: potentially could use
+        # goal_location will have been modified by find_tag 
+        #self.do_gradient_descent(self.current_joint_angles, self.goal_location) # also takes into account picking up object, specify an xyz
+    
+        # arm joint parameters found through testing; brings the arm downwards to its initial position
+        arm_joint_goal = [0.0, 0.4, 0.1, -0.65]
+        self.move_group_arm.go(arm_joint_goal, wait=True)
+        self.move_group_arm.stop()
+        # sleep for some time to make sure there is enough time for the arm to lower
+        rospy.sleep(5)
+        # then open the gripper to release the object
+        gripper_joint_goal = [0.019,0.019]
+        self.move_group_gripper.go(gripper_joint_goal, wait=True)
+        self.move_group_gripper.stop()
+        
+        # moving the robot back once it has dropped the object, 
+        # so that there is space for it to continue spinning and find the next object 
+        self.movement.linear.x = -0.1
+        self.movement_pub.publish(self.movement)
+        rospy.sleep(1)
+        self.movement.linear.x = 0.0
+        self.movement_pub.publish(self.movement)
+
+        rospy.sleep(1)
+        #updating control variables 
+        self.object_dropped = 1
+
     def run(self):
         # Uses gradient descent to compute how much to move arms.
         # reference: https://www.alanzucconi.com/2017/04/10/robotic-arms/
         rospy.sleep(3)
-        # TODO: choose good learning rate
-        tau = 0.05 # learning rate
-        # TODO: choose good distance threshold
-        distance_threshold = 0.075
-        reached_goal = False
         
+        while len(self.objects_list) > 0: 
+            if not self.object_found: 
+                self.find_object()
+            elif not self.object_picked_up: # include finding the goal location as well
+                self.pick_up_object()
+            elif not self.tag_found:
+                self.find_tag()
+            elif not self.object_dropped:
+                self.drop_object()
+            # popping off the list of remaining actions to take once the action has been completed,
+            # resetting state variables
+            else:
+                self.objects_list.pop(0)
+                self.object_found = 0
+                self.object_picked_up = 0
+                self.tag_found = 0
+                self.object_dropped = 0
+            rospy.sleep(1)
+
+        rospy.spin()
+
+if __name__ == "__main__":
+    node = InverseKinematics()
+    node.run()
+
+
+'''
+        tau = 0.05 # learning rate
+        distance_threshold = 0.075 # threshold for the arm to move to the goal location (object)
+        reached_goal = False
         while not reached_goal:
             print('first one')
             print("current location:", self.get_current_location(self.current_joint_angles))
@@ -236,7 +479,7 @@ class InverseKinematics:
             else:
                 
                 for i in (range(len(self.current_joint_angles))): # make sure not to update last joint
-                    gradient = self.gradient_descent(i)
+                    gradient = self.partial_gradient(i)
                     self.current_joint_angles[i] -= tau * gradient
                     # clamping to make sure that angle values do not go out of bounds
                     self.clamp_angles(i)
@@ -251,55 +494,6 @@ class InverseKinematics:
                     reached_goal = True
                     rospy.sleep(5)
                 # return
-            rospy.sleep(0.01)
         rospy.spin()
 
-if __name__ == "__main__":
-    node = InverseKinematics()
-    node.run()
-
-    '''      
-    def get_joint_dist(self, current_location, goal_location):
-        # TODO: calculates current position from our current joint angles (forward kinematics)
-        #   use forward kinematics equations: inputs = joint angles 2, 3, 4
-        #   outputs: array of distances x, y, z
-        # OR current pose of the arm, through a method; outputs: x, y, z
-        curr_location_array = np.asarray(current_location)
-
-        # TODO: then get goal position from camera/lidar data
-        goal_location_array = np.asarray(goal_location)
-
-        # TODO: compute distance between current pose and goal pose
-        distance = numpy.linalg.norm(curr_location_array - goal_location_array) 
-
-        return distance
-    
-    def gradient_descent(self):
-        # TODO: computes gradient based on joint distance of each joint.
-        # distance from the target
-        # reference: https://www.alanzucconi.com/2017/04/10/gradient-descent/
-        delta = 1 # TODO: figure out good delta for gradient descent
-        old_distance = self.get_joint_dist(self.current_location, self.goal_location)
-        new_joint_angles = []
-        for angle in self.current_joint_angles:
-            new_joint_angles.append(angle + delta)
-        self.move_group_arm.go(new_joint_angles, wait=True)
-        rospy.sleep(1)
-
-        # check get_current_pose() if it actually uses forward kinematics
-        new_location = moveit_commander.move_group.MoveGroupCommander.get_current_pose()
-        new_distance = self.get_joint_dist(new_location, self.goal_location)
-
-        gradient = (new_distance - old_distance) / delta
-        
-        return gradient
-    
-
-        # find the current position and the end effector position
-            # inputting in joint angles and then getting current position from forwards kinematics
-            # OR get_current_pose to get current position, not using forward kinematiccs
-        # gradient
-            # distance given that we've moved the angles + delta
-                # input in the new joint angles and then get hypothetical new position from forward kinematics equations
-                # OR we have to get new_hypothetical_pose from get_current_pose AFTER making the robot move to those new angles
-    '''
+'''
