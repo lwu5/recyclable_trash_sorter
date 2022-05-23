@@ -25,6 +25,9 @@ class Robot_Mover:
         # putting images in gobal variable
         self.images = None
 
+        # putting scans in a global variable
+        self.scans = None
+
         # keep track of what color is found
         self.detected_color = False
 
@@ -42,28 +45,27 @@ class Robot_Mover:
         self.images = img
 
     def scan_callback(self, data):
-        print("reaches scan")
         self.scan = data
         self.front_distance = np.mean([data.ranges[i] for i in [0, 1, 2, 359, 358]])
 
     def find_color(self, color):
         #if the camera images are loaded from the callback function image_callback 
         if self.images is not None:
-            # setting the angular z value parameters to explore the environment in the angular direction
-            self.movement.angular.z = 0.2
             image = self.bridge.imgmsg_to_cv2(self.images,desired_encoding='bgr8') # loading the color image
             hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
             
             #setting up the hsv ranges for the different colored objects 
             if color == 0: # for sake of code simplicity, 0 == blue
-                lower_bound = numpy.array([95, 90, 100]) 
-                upper_bound = numpy.array([105, 110, 150]) 
+                lower_bound = np.array([95, 90, 100]) 
+                upper_bound = np.array([105, 110, 150]) 
             elif color == 1: # for sake of code simplicity, 1 == pink
-                lower_bound= numpy.array([155, 140, 120]) 
-                upper_bound= numpy.array([165, 160, 170]) 
+                lower_bound= np.array([155, 140, 120]) 
+                upper_bound= np.array([165, 160, 170]) 
             elif color == 2: # for sake of code simplicity, 2 == green
-                lower_bound = numpy.array([30, 130, 90]) 
-                upper_bound = numpy.array([40, 150, 150]) 
+                lower_bound = np.array([30, 130, 90]) 
+                upper_bound = np.array([40, 150, 150])
+        else:
+            print("no image")
 
         # erases all the pixels in the image that aren't in that range
         mask = cv2.inRange(hsv, lower_bound, upper_bound)
@@ -75,6 +77,7 @@ class Robot_Mover:
 
         # if it detected the color
         if M['m00'] > 0:
+
             self.detected_color = True
             # center of the colored pixels in the image
             cx = int(M['m10']/M['m00'])
@@ -90,9 +93,6 @@ class Robot_Mover:
             lin = Vector3(0.0, 0.0, 0.0)
             ang = Vector3(0, 0, angular_k * angular_error)
             self.vel_pub.publish(Twist(linear=lin, angular=ang))
-
-            # moves to object after orientation is done
-            self.move_to_object()
         else:
             self.detected_color = False
         
@@ -108,7 +108,7 @@ class Robot_Mover:
                 curr_color += 1
             else:
                 lin = Vector3(0.0, 0.0, 0.0)
-                ang = Vector3(0.0, 0.0, .5)
+                ang = Vector3(0.0, 0.0, .1)
                 curr_color = 0
                 self.vel_pub.publish(Twist(linear=lin, angular=ang))
 
@@ -127,6 +127,9 @@ class Robot_Mover:
 
     def run(self):
         self.find_goal_location(self.images)
+        sleep(3)
+        # moves to object after orientation is done
+        self.move_to_object()
         rospy.spin()
 
 if __name__ == "__main__":
