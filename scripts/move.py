@@ -33,7 +33,6 @@ class Robot_Mover:
         print('finished initializing!')
 
     def image_callback(self, msg):
-        print("reached image callback")
         if not msg.data:
             print("no image")
             return
@@ -139,7 +138,10 @@ class Robot_Mover:
  
     def run(self):
 
+        
         self.find_color()
+
+
 
         rospy.sleep(1)
 
