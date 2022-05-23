@@ -7,6 +7,7 @@ import moveit_commander
 import math
 
 from sensor_msgs.msg import Image, LaserScan
+
 from geometry_msgs.msg import Twist, Vector3
 
 from time import sleep
@@ -18,6 +19,8 @@ class InverseKinematics:
         rospy.init_node("inverse_kinematics")
 
         self.scan_sub = rospy.Subscriber('/scan', LaserScan, self.scan_callback)
+
+        self.button_sub = rospy.Subscriber('sensor_state', SensorState, self.button_callback)
 
         self.vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
 
@@ -57,6 +60,8 @@ class InverseKinematics:
         # initializing attributes that will hold images and scan data
         self.images = None
         self.scans = None
+
+        self.button_state = 0
         
         print('finished initializing!')
 
@@ -109,6 +114,12 @@ class InverseKinematics:
                 # proportional control to orient towards the colored object
             cv2.imshow("window", image)
             cv2.waitKey(3)
+
+    def button_callback(self, data):
+        
+        self.button_state = (int)data.illumination
+
+        return
 
 
     def get_current_location(self, angles):

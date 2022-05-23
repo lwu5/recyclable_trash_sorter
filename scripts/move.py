@@ -49,6 +49,8 @@ class Robot_Mover:
         # cv2.imshow("window", mask)
         cv2.waitKey(3)
 
+        print(self.image)
+
         self.find_goal_location(self.image)
 
         rospy.sleep(3)
@@ -106,6 +108,7 @@ class Robot_Mover:
         center = self.colored_centers[color_id]
         # go in front of object
         r = rospy.Rate(10)
+        print(self.images)
         if self.images is not None:
             print("reaches when self.images is not None")
             while not (abs(center[1] - self.img_width / 2) < 10 and abs(self.front_distance - 0.2) < 0.02):
@@ -143,5 +146,5 @@ class Robot_Mover:
 
 if __name__ == "__main__":
     node = Robot_Mover()
-    sleep(0.1)
+    sleep(3)
     node.run()
