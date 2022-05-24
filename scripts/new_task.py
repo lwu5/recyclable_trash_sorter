@@ -124,7 +124,7 @@ class InverseKinematics:
     
     def find_color(self):
         if self.images is not None and self.front_distance is not None:
-            self.movement.angular.z = 0.2
+            #self.movement.angular.z = 0.2
             # loads the image and checks for color in image
             image = self.bridge.imgmsg_to_cv2(self.images, desired_encoding='bgr8') # loading the color image
             
@@ -147,6 +147,7 @@ class InverseKinematics:
                     self.detected_color = False
                     self.start_moving_forward = False
                     self.movement.linear.x = 0
+                    self.movement.angular.z = 0
                 else:
                     # center of the colored pixels in the image
                     cx = int(M['m10']/M['m00'])
@@ -172,10 +173,12 @@ class InverseKinematics:
                     if self.start_moving_forward:
                         linear_tol = 0.0145
                         self.movement.linear.x = min((self.front_distance - 0.15) * 0.4, 0.5)
+                        print(self.front_distance - 0.15)
                         if abs((self.front_distance - 0.15) < linear_tol):
                             self.movement.linear.x = 0
                             self.movement.angular.z = 0
                             self.robot_state = 1
+                            self.start_moving_forward = 0
                             self.goal_location = [0.3, 0, 0.2]
                             self.detected_color = False
             else:
