@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 
+from __future__ import annotations
 import rospy, cv2, cv_bridge
 import numpy as np
 # import the moveit_commander, which allows us to control the arms
 import moveit_commander
 import math
 
-from __future__ import annotations
 from sensor_msgs.msg import Image, LaserScan
 from geometry_msgs.msg import Twist, Vector3
 from time import sleep
@@ -24,17 +24,6 @@ class InverseKinematics:
 
         # set up ROS / OpenCV bridge
         self.bridge = cv_bridge.CvBridge()
-
-        self.image_sub = rospy.Subscriber('camera/rgb/image_raw', Image, self.image_callback)
-
-        self.scan_sub = rospy.Subscriber('/scan', LaserScan, self.scan_callback)
-
-        self.button_sub = rospy.Subscriber('sensor_state', SensorState, self.button_callback)
-
-        self.vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
-
-        self.image_sub = rospy.Subscriber('camera/rgb/image_raw', Image, self.image_callback)
-
 
         # initializing movement publishing
         self.movement = Twist(linear=Vector3(), angular=Vector3())
@@ -101,46 +90,59 @@ class InverseKinematics:
 
         # lower and upper bounds for blue, pink, and green
         self.color_dict = {
-            "0": (np.array([95, 90, 100], np.array([105, 110, 150]))),
-            "1": (np.array([155, 140, 120]), np.array([165, 160, 170])),
-            "2": (np.array([30, 130, 90]), np.array([40, 150, 150]))
+            0: (np.array([95, 90, 100]), np.array([105, 110, 150])),
+            1: (np.array([155, 140, 120]), np.array([165, 160, 170])),
+            2: (np.array([30, 130, 90]), np.array([40, 150, 150]))
         }
 
         self.cx = 0
         self.cy = 0
         self.w = 0
-        
+ 
+        self.image_sub = rospy.Subscriber('camera/rgb/image_raw', Image, self.image_callback)
+
+        self.scan_sub = rospy.Subscriber('/scan', LaserScan, self.scan_callback)
+
+        self.button_sub = rospy.Subscriber('sensor_state', SensorState, self.button_callback)
+
+        self.vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
+
+       
         print('finished initializing!')
 
     def image_callback(self, img):
+        #print('entered image callback')
         self.images = img
         # loads the image and checks for color in image
         image = self.bridge.imgmsg_to_cv2(self.images,desired_encoding='bgr8') # loading the color image
-        assert image is not None
+        
         hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
         #dimensions of the image, used later for proportional control 
         h, self.w, d = image.shape
 
         if self.robot_state == 0:
+            #print('finding color')
             for color in self.color_dict:
                 self.find_color(hsv, image, color)
-        
-    def scan_callback(self, data):
-        self.scans = data.ranges
-        self.front_distance = np.mean([data.ranges[i] for i in [0, 1, 2, 359, 358]])
-        if self.robot_state == 1:
+        elif self.robot_state == 1:
+            print('should start rotating')
             self.rotate_towards_object()
         elif self.robot_state == 2:
             self.move_to_object()
 
+
+    def scan_callback(self, data):
+        print('reached scan callback')
+        self.scans = data.ranges
+        self.front_distance = np.mean([data.ranges[i] for i in [0, 1, 2, 359, 358]])
     def find_color(self, hsv: np.ndarray, img: np.ndarray, color: int) -> None:
         # erases all the pixels in the image that aren't in that range
         lower_bound, upper_bound = self.color_dict[color]
         mask = cv2.inRange(hsv, lower_bound , upper_bound)
 
         # determines the center of the colored pixels
-        M = cv2.connectedComponentsWithStats(mask)
+        M = cv2.moments(mask)
 
         # if it detected the color
         if M['m00'] > 0:
@@ -154,7 +156,20 @@ class InverseKinematics:
             # a red circle is visualized in the debugging window to indicate
             # the center point of the colored pixels
             cv2.circle(img, (cx, cy), 20, (0,0,255), -1)
+           
+             
+            angular_error = ((self.w/2) - (self.cx))
+            angular_k = 0.001
+            
+            while abs(angular_error) < 0.02:
+                lin = Vector3(0, 0, 0)
+                ang = Vector3(0, 0, angular_k * angular_error)
+                twist = Twist(linear=lin, angular=ang)
+                self.vel_pub.publish(twist)
+        return
 
+
+            
         else:
             self.detected_color = False
         
@@ -163,7 +178,10 @@ class InverseKinematics:
 
     def update_state(self):
         if self.robot_state == 0 and self.detected_color:
+            print('state = 0 in update_state')
+            
             self.robot_state = 1
+            print('robot)state', self.robot_state)
         elif self.robot_state == 1 and self.rotated:
             self.robot_state = 2
         elif self.robot_state == 2:
@@ -174,7 +192,7 @@ class InverseKinematics:
             self.find_tag()
         elif self.robot_state == 5:
             self.drop_object()
-        else:
+        elif self.robot_state == 6:
             self.detected_color = False
             self.rotated = False
             self.robot_state = 0
@@ -182,6 +200,7 @@ class InverseKinematics:
     def rotate_towards_object(self):
         #TODO: ROTATE OBJECT AND MAKE SURE ITS FACING OBJECT
         # proportional control to orient towards the colored object
+        
         angular_error = ((self.w/2) - (self.cx))
         angular_k = 0.001
         while abs(angular_error) < 0.02:
