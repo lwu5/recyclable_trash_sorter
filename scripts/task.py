@@ -101,9 +101,9 @@ class InverseKinematics:
 
         # lower and upper bounds for blue, pink, and green
         self.color_dict = {
-            0: (np.array([95, 90, 100], np.array([105, 110, 150]))),
-            1: (np.array([155, 140, 120]), np.array([165, 160, 170])),
-            2: (np.array([30, 130, 90]), np.array([40, 150, 150]))
+            "0": (np.array([95, 90, 100], np.array([105, 110, 150]))),
+            "1": (np.array([155, 140, 120]), np.array([165, 160, 170])),
+            "2": (np.array([30, 130, 90]), np.array([40, 150, 150]))
         }
 
         self.cx = 0
