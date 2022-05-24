@@ -174,9 +174,15 @@ class InverseKinematics:
                         linear_tol = 0.0145
                         self.movement.linear.x = min((self.front_distance - 0.15) * 0.4, 0.5)
                         print(self.front_distance - 0.15)
-                        if abs((self.front_distance - 0.15) < linear_tol):
-                            self.movement.linear.x = 0
-                            self.movement.angular.z = 0
+                        while not abs((self.front_distance - 0.15) < linear_tol):
+                            try:
+                                lin = Vector3(min((self.front_distance - 0.5) * 0.4, 0.5), 0.0, 0.0)
+                                ang = Vector3(0.0, 0.0, 0.0)
+                                twist = Twist(linear=lin, angular=ang)
+                                self.vel_pub.publish(twist)
+                            except ValueError:
+                                self.movement.linear.x = 0
+                                self.movement.angular.z = 0
                             self.robot_state = 1
                             self.start_moving_forward = 0
                             self.goal_location = [0.3, 0, 0.2]
