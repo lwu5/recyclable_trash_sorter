@@ -118,13 +118,13 @@ class InverseKinematics:
 
 
     def scan_callback(self, data):
-        print('reached scan callback')
         self.scans = data.ranges
         self.front_distance = np.mean([data.ranges[i] for i in [0, 1, 2, 359, 358]])
 
     
     def find_color(self):
         if self.images is not None and self.front_distance is not None:
+            self.movement.angular.z = 0.2
             # loads the image and checks for color in image
             image = self.bridge.imgmsg_to_cv2(self.images, desired_encoding='bgr8') # loading the color image
             
@@ -134,62 +134,70 @@ class InverseKinematics:
             h, self.w, d = image.shape
 
             if self.detected_color:
-                 # erases all the pixels in the image that aren't in that range
+                print('entered self.detected_color')
+                # erases all the pixels in the image that aren't in that range
                 lower_bound, upper_bound = self.color_dict[self.which_color]
                 mask = cv2.inRange(hsv, lower_bound , upper_bound)
 
                 # determines the center of the colored pixels
                 M = cv2.moments(mask)
-                
-                # center of the colored pixels in the image
-                cx = int(M['m10']/M['m00'])
-                cy = int(M['m01']/M['m00'])
-                self.cx = cx
-                self.cy = cy
-                # a red circle is visualized in the debugging window to indicate
-                # the center point of the colored pixels
-                cv2.circle(img, (cx, cy), 20, (0,0,255), -1)
+
+                # in the case that it lost the color 
+                if M['m00'] <= 0:
+                    self.detected_color = False
+                    self.start_moving_forward = False
+                    self.movement.linear.x = 0
+                else:
+                    # center of the colored pixels in the image
+                    cx = int(M['m10']/M['m00'])
+                    cy = int(M['m01']/M['m00'])
+                    self.cx = cx
+                    self.cy = cy
+                    # a red circle is visualized in the debugging window to indicate
+                    # the center point of the colored pixels
+                    cv2.circle(image, (cx, cy), 20, (0,0,255), -1)
             
-                # this handles rotating
-                angular_error = ((self.w/2) - (self.cx))
-                angular_k = 0.001
+                    # this handles rotating
+                    print('should start rotating')
+                    angular_error = ((self.w/2) - (self.cx))
+                    angular_k = 0.001
+                    angular_tol = 4.0
+                    print(angular_error)
+                    self.movement.angular.z = angular_error * angular_k
+                    if abs(angular_error) <= angular_tol:
+                        print('should start moving forward')
+                        self.start_moving_forward = True
                 
-                angular_tol = 0.1
-
-                self.movement.angular.z = angular_error * angular_k
-                if abs(angular_error) < angular_tol:
-                    self.start_moving_forward = 1
-                
-                # this handles forward movement
-                if self.start_moving_forward:
-                    linear_tol = 0.02
-                    self.movement.linear.x = min((self.front_distance - 0.15) * 0.4, 0.5)
-                    if abs((self.front_distance - 0.15) < linear_tol):
-                        self.movement.linear.x = 0
-                        self.movement.angular.z = 0
-                        self.robot_state = 1
-                        self.goal_location = [0.3, 0, 0.2]
-                        self.detected_color = False
+                    # this handles forward movement
+                    if self.start_moving_forward:
+                        linear_tol = 0.0145
+                        self.movement.linear.x = min((self.front_distance - 0.15) * 0.4, 0.5)
+                        if abs((self.front_distance - 0.15) < linear_tol):
+                            self.movement.linear.x = 0
+                            self.movement.angular.z = 0
+                            self.robot_state = 1
+                            self.goal_location = [0.3, 0, 0.2]
+                            self.detected_color = False
             else:
-
                 for color in self.color_dict:
-                # erases all the pixels in the image that aren't in that range
-                lower_bound, upper_bound = self.color_dict[color]
-                mask = cv2.inRange(hsv, lower_bound , upper_bound)
+                    # erases all the pixels in the image that aren't in that range
+                    lower_bound, upper_bound = self.color_dict[color]
+                    mask = cv2.inRange(hsv, lower_bound , upper_bound)
 
-                # determines the center of the colored pixels
-                M = cv2.moments(mask)
+                    # determines the center of the colored pixels
+                    M = cv2.moments(mask)
 
-                # if it detected the color
-                if M['m00'] > 0:
-                    self.detected_color = True
-                    self.which_color = color
+                    # if it detected the color
+                    if M['m00'] > 0:
+                        self.detected_color = True
+                        self.which_color = color
+                        print(self.which_color)
+                        break
                     
- 
-            cv2.imshow("window", img)
+            cv2.imshow("window", image)
             cv2.waitKey(3)
             
-            self.vel_pub.publish(twist)
+            self.vel_pub.publish(self.movement)
 
 
     def update_state(self):
@@ -390,7 +398,7 @@ class InverseKinematics:
     def do_gradient_descent(self, angles, goal_location):
 
         tau = 0.05 # learning rate
-        distance_threshold = 0.075 # threshold for the arm to move to the goal location (object)
+        distance_threshold = 0.07 # threshold for the arm to move to the goal location (object)
 
         # checking if it is within the goal location
         if self.get_joint_dist(angles, goal_location) <= distance_threshold:
@@ -462,10 +470,10 @@ class InverseKinematics:
         # moving the robot back once it has dropped the object, 
         # so that there is space for it to continue spinning and find the next object 
         self.movement.linear.x = -0.1
-        self.movement_pub.publish(self.movement)
+        self.vel_pub.publish(self.movement)
         rospy.sleep(1)
         self.movement.linear.x = 0.0
-        self.movement_pub.publish(self.movement)
+        self.vel_pub.publish(self.movement)
 
         rospy.sleep(1)
         #updating control variables 
