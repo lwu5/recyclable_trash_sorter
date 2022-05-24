@@ -107,7 +107,7 @@ class InverseKinematics:
     def find_object(self):
         # TODO: from scan and image data, find the end position that we want the robot arm to move to
         if True:
-            self.goal_location = [0.3,0.1,0.3]
+            self.goal_location = [0.3,0,0.25]
             self.object_found = 1
         return
 
@@ -449,10 +449,10 @@ class InverseKinematics:
                 self.find_object()
             elif not self.object_picked_up: # include finding the goal location as well
                 self.pick_up_object()
-            elif not self.tag_found:
-                self.find_tag()
-            elif not self.object_dropped:
-                self.drop_object()
+            #elif not self.tag_found:
+            #    self.find_tag()
+            #elif not self.object_dropped:
+            #    self.drop_object()
             # popping off the list of remaining actions to take once the action has been completed,
             # resetting state variables
             else:
