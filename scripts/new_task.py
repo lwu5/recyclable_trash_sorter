@@ -175,29 +175,42 @@ class InverseKinematics:
                 
                     # this handles forward movement
                     if self.start_moving_forward:
-                        linear_tol = 0.02
-                        # print(self.front_distance - 0.2)
-                        while not self.reached_object:
-                            print("this should stop when reached_object is true:", self.reached_object)
-                        # while not abs((self.front_distance - 0.2) < linear_tol):
-                            lin = Vector3(min((self.front_distance - 0.15) * 0.4, 0.5), 0.0, 0.0)
-                            # print("linear", lin)
-                            ang = Vector3(0.0, 0.0, 0.0)
-                            twist = Twist(linear=lin, angular=ang)
-                            self.vel_pub.publish(twist)
-                            if abs((self.front_distance - 0.2) < linear_tol):
-                                print("reached object is: ", self.reached_object)
-                                self.reached_object = True
-                                print("reached object is supposed to be true: ", self.reached_object)
-                        self.vel_pub.publish(Vector3(0, 0, 0), Vector3(0, 0, 0))
-                        self.movement.linear.x = 0
+                        linear_tol = 0.0145
+                        self.movement.linear.x = min((self.front_distance - 0.15) * 0.4, 0.5)
                         self.movement.angular.z = 0
-                        self.robot_state = 1
-                        self.start_moving_forward = 0
-                        self.goal_location = [0.3, 0, 0.2]
-                        self.detected_color = False
-                        self.finish_color.append(self.which_color)
-                        self.reached_object = False
+                        print(self.front_distance - 0.15)
+                        if abs((self.front_distance - 0.15) < linear_tol):
+                            # print(self.front_distance - 0.15)
+                            self.movement.linear.x = 0
+                            self.movement.angular.z = 0
+                            self.robot_state = 1
+                            self.start_moving_forward = 0
+                            self.goal_location = [0.3, 0, 0.2]
+                            self.detected_color = False
+                        # linear_tol = 0.02
+                        # print(self.front_distance - 0.2)
+                        # while not self.reached_object:
+                        #     print("this should stop when reached_object is true:", self.reached_object)
+                        # # while not abs((self.front_distance - 0.2) < linear_tol):
+                        #     # lin = Vector3(min((self.front_distance - 0.15) * 0.4, 0.5), 0.0, 0.0)
+                        #     # print("linear", lin)
+                        #     lin = Vector3(0, 0, 0)
+                        #     ang = Vector3(0.0, 0.0, 0.0)
+                        #     twist = Twist(linear=lin, angular=ang)
+                        #     self.vel_pub.publish(twist)
+                        #     if abs((self.front_distance - 0.2) < linear_tol):
+                        #         print("reached object is: ", self.reached_object)
+                        #         self.reached_object = True
+                        #         print("reached object is supposed to be true: ", self.reached_object)
+                        # self.vel_pub.publish(Vector3(0, 0, 0), Vector3(0, 0, 0))
+                        # self.movement.linear.x = 0
+                        # self.movement.angular.z = 0
+                        # self.robot_state = 1
+                        # self.start_moving_forward = 0
+                        # self.goal_location = [0.3, 0, 0.2]
+                        # self.detected_color = False
+                        # self.finish_color.append(self.which_color)
+                        # self.reached_object = False
             else:
                 for color in self.color_dict:
                     if color in self.finish_color:
