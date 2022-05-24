@@ -50,6 +50,11 @@ class Robot_Mover:
             1: (np.array([155, 140, 120]), np.array([165, 160, 170])),
             2: (np.array([30, 130, 90]), np.array([40, 150, 150]))
         }
+
+        self.cx = 0
+        self.cy = 0
+        self.w = 0
+
         print('finished initializing!')
 
     def image_callback(self, img: Image) -> None:
@@ -58,17 +63,21 @@ class Robot_Mover:
         assert image is not None
         hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
+        #dimensions of the image, used later for proportional control 
+        h, self.w, d = image.shape
+
         if self.robot_state == 0:
             for color in self.color_dict:
                 self.find_color(hsv, image, color)
+
 
     def scan_callback(self, data):
         self.scan = data
         self.front_distance = np.mean([data.ranges[i] for i in [0, 1, 2, 359, 358]])
         if self.robot_state == 1:
-            self.rotate_towards_object(data)
+            self.rotate_towards_object()
         elif self.robot_state == 2:
-            self.move_to_object(data)
+            self.move_to_object()
 
     def find_color(self, hsv: np.ndarray, img: np.ndarray, color: int) -> None:
         # erases all the pixels in the image that aren't in that range
@@ -85,7 +94,8 @@ class Robot_Mover:
             # center of the colored pixels in the image
             cx = int(M['m10']/M['m00'])
             cy = int(M['m01']/M['m00'])
-                
+            self.cx = cx
+            self.cy = cy
             # a red circle is visualized in the debugging window to indicate
             # the center point of the colored pixels
             cv2.circle(img, (cx, cy), 20, (0,0,255), -1)
@@ -106,12 +116,19 @@ class Robot_Mover:
             self.detected_color = False
             self.rotated = False
 
-    def rotate_towards_object(self, data):
+    def rotate_towards_object(self):
         #TODO: ROTATE OBJECT AND MAKE SURE ITS FACING OBJECT
-        self.rotated = True
+        # proportional control to orient towards the colored object
+        angular_error = ((self.w/2) - (self.cx))
+        angular_k = 0.001
+        while angular_error != 0:
+            lin = Vector3(0, 0, 0)
+            ang = Vector3(0, 0, angular_k * angular_error)
+            twist = Twist(linear=lin, angular=ang)
+            self.vel_pub.publish(twist)
         return
 
-    def move_to_object(self, data):
+    def move_to_object(self):
         if self.scans is not None:
             # go in front of object
             print("Robot mover: Approaching object")
