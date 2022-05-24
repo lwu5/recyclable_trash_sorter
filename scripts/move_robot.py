@@ -4,6 +4,7 @@ import rospy, cv2, cv_bridge
 import numpy as np
 import math
 
+from __future__ import annotations
 from sensor_msgs.msg import Image, LaserScan
 from geometry_msgs.msg import Twist, Vector3
 
@@ -37,43 +38,45 @@ class Robot_Mover:
         # what the image width is
         self.img_width = 100
 
+        # finding object (0) -> orient facing object (1) -> go towards object (2)
+        self.robot_state = 0
+
+        # state variable to check if it has rotated and adjusted itself towards the object
+        self.rotated = False
+
+        # lower and upper bounds for blue, pink, and green
+        self.color_dict = {
+            0: (np.array([95, 90, 100], np.array([105, 110, 150]))),
+            1: (np.array([155, 140, 120]), np.array([165, 160, 170])),
+            2: (np.array([30, 130, 90]), np.array([40, 150, 150]))
+        }
         print('finished initializing!')
 
-    def image_callback(self, img):
-        if img is None:
-            print("there is no image")
-        self.images = img
+    def image_callback(self, img: Image) -> None:
+        # loads the image and checks for color in image
+        image = self.bridge.imgmsg_to_cv2(self.images,desired_encoding='bgr8') # loading the color image
+        assert image is not None
+        hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+
+        if self.robot_state == 0:
+            for color in self.color_dict:
+                self.find_color(hsv, image, color)
 
     def scan_callback(self, data):
         self.scan = data
         self.front_distance = np.mean([data.ranges[i] for i in [0, 1, 2, 359, 358]])
+        if self.robot_state == 1:
+            self.rotate_towards_object(data)
+        elif self.robot_state == 2:
+            self.move_to_object(data)
 
-    def find_color(self, color):
-        #if the camera images are loaded from the callback function image_callback 
-        if self.images is not None:
-            image = self.bridge.imgmsg_to_cv2(self.images,desired_encoding='bgr8') # loading the color image
-            hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-            
-            #setting up the hsv ranges for the different colored objects 
-            if color == 0: # for sake of code simplicity, 0 == blue
-                lower_bound = np.array([95, 90, 100]) 
-                upper_bound = np.array([105, 110, 150]) 
-            elif color == 1: # for sake of code simplicity, 1 == pink
-                lower_bound= np.array([155, 140, 120]) 
-                upper_bound= np.array([165, 160, 170]) 
-            elif color == 2: # for sake of code simplicity, 2 == green
-                lower_bound = np.array([30, 130, 90]) 
-                upper_bound = np.array([40, 150, 150])
-        else:
-            print("no image")
-
+    def find_color(self, hsv: np.ndarray, img: np.ndarray, color: int) -> None:
         # erases all the pixels in the image that aren't in that range
-        mask = cv2.inRange(hsv, lower_bound, upper_bound)
-        # determines the center of the colored pixels
-        M = cv2.moments(mask)
+        lower_bound, upper_bound = self.color_dict[color]
+        mask = cv2.inRange(hsv, lower_bound , upper_bound)
 
-        #dimensions of the image, used later for proportional control 
-        h, w, d = image.shape
+        # determines the center of the colored pixels
+        M = cv2.connectedComponentsWithStats(mask)
 
         # if it detected the color
         if M['m00'] > 0:
@@ -85,34 +88,30 @@ class Robot_Mover:
                 
             # a red circle is visualized in the debugging window to indicate
             # the center point of the colored pixels
-            cv2.circle(image, (cx, cy), 20, (0,0,255), -1)
-            
-            # proportional control to orient towards the colored object
-            angular_error = ((w/2) - (cx))
-            angular_k = 0.001
-            lin = Vector3(0.0, 0.0, 0.0)
-            ang = Vector3(0, 0, angular_k * angular_error)
-            self.vel_pub.publish(Twist(linear=lin, angular=ang))
+            cv2.circle(img, (cx, cy), 20, (0,0,255), -1)
+
         else:
             self.detected_color = False
         
-        cv2.imshow("window", image)
+        cv2.imshow("window", img)
         cv2.waitKey(3)
-    
-    def find_goal_location(self, image):
-        #TODO: Find the goal location using the robot lidar data and image recognition
-        curr_color = 0
-        while not self.detected_color:
-            if curr_color < 3:
-                self.find_color(curr_color)
-                curr_color += 1
-            else:
-                lin = Vector3(0.0, 0.0, 0.0)
-                ang = Vector3(0.0, 0.0, .1)
-                curr_color = 0
-                self.vel_pub.publish(Twist(linear=lin, angular=ang))
 
-    def move_to_object(self):
+    def update_state(self):
+        if self.robot_state == 0 and self.detected_color:
+            self.robot_state = 1
+        elif self.robot_state == 1 and self.rotated:
+            self.robot_state = 2
+        elif self.robot_state == 2:
+            self.robot_state = 0
+            self.detected_color = False
+            self.rotated = False
+
+    def rotate_towards_object(self, data):
+        #TODO: ROTATE OBJECT AND MAKE SURE ITS FACING OBJECT
+        self.rotated = True
+        return
+
+    def move_to_object(self, data):
         if self.scans is not None:
             # go in front of object
             print("Robot mover: Approaching object")
@@ -120,17 +119,13 @@ class Robot_Mover:
             while not abs(self.front_distance - 0.15) < 0.02:
                 lin = Vector3(min((self.front_distance - 0.15) * 0.4, 0.5), 0.0, 0.0)
                 ang = Vector3(0.0, 0.0, (self.img_width) * 0.01)
-            twist = Twist(linear=lin, angular=ang)
-            self.vel_pub.publish(twist)
-            
+                twist = Twist(linear=lin, angular=ang)
+                self.vel_pub.publish(twist)
         
 
     def run(self):
-        self.find_goal_location(self.images)
-        sleep(3)
-        # moves to object after orientation is done
-        self.move_to_object()
-        rospy.spin()
+        while True:
+            self.update_state()
 
 if __name__ == "__main__":
     node = Robot_Mover()
