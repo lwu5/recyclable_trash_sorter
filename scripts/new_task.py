@@ -100,6 +100,8 @@ class InverseKinematics:
         self.cx = 0
         self.cy = 0
         self.w = 0
+
+        self.finish_color = []
  
         self.image_sub = rospy.Subscriber('camera/rgb/image_raw', Image, self.image_callback)
 
@@ -108,6 +110,8 @@ class InverseKinematics:
         self.button_sub = rospy.Subscriber('sensor_state', SensorState, self.button_callback)
 
         self.vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
+
+        self.reached_object = False
 
        
         print('finished initializing!')
@@ -134,7 +138,7 @@ class InverseKinematics:
             h, self.w, d = image.shape
 
             if self.detected_color:
-                print('entered self.detected_color')
+                # print('entered self.detected_color')
                 # erases all the pixels in the image that aren't in that range
                 lower_bound, upper_bound = self.color_dict[self.which_color]
                 mask = cv2.inRange(hsv, lower_bound , upper_bound)
@@ -159,36 +163,45 @@ class InverseKinematics:
                     cv2.circle(image, (cx, cy), 20, (0,0,255), -1)
             
                     # this handles rotating
-                    print('should start rotating')
+                    # print('should start rotating')
                     angular_error = ((self.w/2) - (self.cx))
                     angular_k = 0.001
                     angular_tol = 4.0
-                    print(angular_error)
+                    # print(angular_error)
                     self.movement.angular.z = angular_error * angular_k
                     if abs(angular_error) <= angular_tol:
-                        print('should start moving forward')
+                        # print('should start moving forward')
                         self.start_moving_forward = True
                 
                     # this handles forward movement
                     if self.start_moving_forward:
-                        linear_tol = 0.0145
-                        self.movement.linear.x = min((self.front_distance - 0.15) * 0.4, 0.5)
-                        print(self.front_distance - 0.15)
-                        while not abs((self.front_distance - 0.15) < linear_tol):
-                            try:
-                                lin = Vector3(min((self.front_distance - 0.5) * 0.4, 0.5), 0.0, 0.0)
-                                ang = Vector3(0.0, 0.0, 0.0)
-                                twist = Twist(linear=lin, angular=ang)
-                                self.vel_pub.publish(twist)
-                            except ValueError:
-                                self.movement.linear.x = 0
-                                self.movement.angular.z = 0
-                            self.robot_state = 1
-                            self.start_moving_forward = 0
-                            self.goal_location = [0.3, 0, 0.2]
-                            self.detected_color = False
+                        linear_tol = 0.02
+                        # print(self.front_distance - 0.2)
+                        while not self.reached_object:
+                            print("this should stop when reached_object is true:", self.reached_object)
+                        # while not abs((self.front_distance - 0.2) < linear_tol):
+                            lin = Vector3(min((self.front_distance - 0.15) * 0.4, 0.5), 0.0, 0.0)
+                            # print("linear", lin)
+                            ang = Vector3(0.0, 0.0, 0.0)
+                            twist = Twist(linear=lin, angular=ang)
+                            self.vel_pub.publish(twist)
+                            if abs((self.front_distance - 0.2) < linear_tol):
+                                print("reached object is: ", self.reached_object)
+                                self.reached_object = True
+                                print("reached object is supposed to be true: ", self.reached_object)
+                        self.vel_pub.publish(Vector3(0, 0, 0), Vector3(0, 0, 0))
+                        self.movement.linear.x = 0
+                        self.movement.angular.z = 0
+                        self.robot_state = 1
+                        self.start_moving_forward = 0
+                        self.goal_location = [0.3, 0, 0.2]
+                        self.detected_color = False
+                        self.finish_color.append(self.which_color)
+                        self.reached_object = False
             else:
                 for color in self.color_dict:
+                    if color in self.finish_color:
+                        continue
                     # erases all the pixels in the image that aren't in that range
                     lower_bound, upper_bound = self.color_dict[color]
                     mask = cv2.inRange(hsv, lower_bound , upper_bound)
@@ -200,7 +213,7 @@ class InverseKinematics:
                     if M['m00'] > 0:
                         self.detected_color = True
                         self.which_color = color
-                        print(self.which_color)
+                        # print(self.which_color)
                         break
                     
             cv2.imshow("window", image)
