@@ -136,6 +136,7 @@ class InverseKinematics:
 
             #dimensions of the image, used later for proportional control 
             h, self.w, d = image.shape
+            print('height', h)
 
             if self.detected_color:
                 # print('entered self.detected_color')
@@ -161,7 +162,7 @@ class InverseKinematics:
                     # a red circle is visualized in the debugging window to indicate
                     # the center point of the colored pixels
                     cv2.circle(image, (cx, cy), 20, (0,0,255), -1)
-            
+                    print('cy', cy)
                     # this handles rotating
                     # print('should start rotating')
                     angular_error = ((self.w/2) - (self.cx))
@@ -185,7 +186,13 @@ class InverseKinematics:
                             self.movement.angular.z = 0
                             self.robot_state = 1
                             self.start_moving_forward = 0
-                            self.goal_location = [0.3, 0, 0.2]
+                            #find avg cy of all the objects 
+                            avg_cy = 10 #adjust based on testing 
+                            z = (h - self.cy) * (0.00125)
+                            print(z)
+                            self.goal_location = [0.3, 0, z] 
+                            #self.goal_location = [0.3, 0, z]
+                            #self.goal_location = [0.3, 0, 0.2]
                             self.detected_color = False
                             self.color_dict.pop(self.which_color)
             else:
