@@ -429,7 +429,7 @@ class InverseKinematics:
                     angles[i] -= tau * gradient
                     # clamping to make sure that angle values do not go out of bounds
                     self.clamp_angles(angles, i)
-                #print(self.get_current_location(self.current_joint_angles))
+                print(self.get_current_location(self.current_joint_angles))
                 if self.get_joint_dist(angles, goal_location) < distance_threshold:
                     print('converged')
                     # move the arm to match the goal

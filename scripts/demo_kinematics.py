@@ -385,11 +385,11 @@ class InverseKinematics:
         distance = np.linalg.norm(curr_location_array - goal_location_array) 
         return distance
     
-    def clamp_angles(self, angles, angle_idx):
-        if angles[angle_idx] < self.angle_min[angle_idx]:
-            angles[angle_idx] = self.angle_min[angle_idx]
-        elif angles[angle_idx] > self.angle_max[angle_idx]:
-            angles[angle_idx] = self.angle_max[angle_idx]
+    def clamp_angles(self, angle_idx):
+        if self.current_joint_angles[angle_idx] < self.current_joint_angles[angle_idx]:
+            self.current_joint_angles[angle_idx] = self.angle_min[angle_idx]
+        elif self.current_joint_angles[angle_idx] > self.angle_max[angle_idx]:
+            self.current_joint_angles[angle_idx] = self.angle_max[angle_idx]
 
     def partial_gradient(self, angle_idx):
         # Computes gradient based on joint distance of each joint.
@@ -424,7 +424,7 @@ class InverseKinematics:
                     gradient = self.partial_gradient(i)
                     self.current_joint_angles[i] -= tau * gradient
                     # clamping to make sure that angle values do not go out of bounds
-                    self.clamp_angles(self.current_joint_angles, i)
+                    self.clamp_angles(i)
                 print(self.get_current_location(self.current_joint_angles))
                 if self.get_joint_dist(self.current_joint_angles, goal_location) < distance_threshold:
                     print('converged')
@@ -507,7 +507,7 @@ class InverseKinematics:
         # Uses gradient descent to compute how much to move arms.
         # reference: https://www.alanzucconi.com/2017/04/10/robotic-arms/
         print(self.current_joint_angles)
-        self.do_gradient_descent(self.current_joint_angles, [0.3, 0, 0.2]) # also takes into account picking up object
+        self.do_gradient_descent([0.3, 0, 0.2]) # also takes into account picking up object
         
         # after gradient descent has converged, move the angles to the location for pickup
         print('did it convege')
