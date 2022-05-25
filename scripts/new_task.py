@@ -187,10 +187,11 @@ class InverseKinematics:
                             self.robot_state = 1
                             self.start_moving_forward = 0
                             #find avg cy of all the objects 
-                            avg_cy = 10 #adjust based on testing 
-                            z = (h - self.cy) * (0.00125)
-                            print(z)
-                            self.goal_location = [0.3, 0, z] 
+                            # avg_cy = 10 #adjust based on testing 
+                            # z = (h - self.cy) * (0.00125)
+                            # print(z)
+                            # print(self.front_distance - 0.15)
+                            self.goal_location = [0.3, 0, 0.2] 
                             #self.goal_location = [0.3, 0, z]
                             #self.goal_location = [0.3, 0, 0.2]
                             self.detected_color = False
