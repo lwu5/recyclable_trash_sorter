@@ -76,7 +76,7 @@ class InverseKinematics:
         # keep track of what color is found
         self.detected_color = False
 
-        self.which_color = None
+        self.which_color = 10
 
         # keeps track of how far the object in the front is
         self.front_distance = 1.0
@@ -187,41 +187,22 @@ class InverseKinematics:
                             self.start_moving_forward = 0
                             self.goal_location = [0.3, 0, 0.2]
                             self.detected_color = False
-                        # linear_tol = 0.02
-                        # print(self.front_distance - 0.2)
-                        # while not self.reached_object:
-                        #     print("this should stop when reached_object is true:", self.reached_object)
-                        # # while not abs((self.front_distance - 0.2) < linear_tol):
-                        #     # lin = Vector3(min((self.front_distance - 0.15) * 0.4, 0.5), 0.0, 0.0)
-                        #     # print("linear", lin)
-                        #     lin = Vector3(0, 0, 0)
-                        #     ang = Vector3(0.0, 0.0, 0.0)
-                        #     twist = Twist(linear=lin, angular=ang)
-                        #     self.vel_pub.publish(twist)
-                        #     if abs((self.front_distance - 0.2) < linear_tol):
-                        #         print("reached object is: ", self.reached_object)
-                        #         self.reached_object = True
-                        #         print("reached object is supposed to be true: ", self.reached_object)
-                        # self.vel_pub.publish(Vector3(0, 0, 0), Vector3(0, 0, 0))
-                        # self.movement.linear.x = 0
-                        # self.movement.angular.z = 0
-                        # self.robot_state = 1
-                        # self.start_moving_forward = 0
-                        # self.goal_location = [0.3, 0, 0.2]
-                        # self.detected_color = False
-                        # self.finish_color.append(self.which_color)
-                        # self.reached_object = False
+                            # self.finish_color.append(self.finish_color)
+                            self.color_dict.pop(self.which_color)
             else:
                 for color in self.color_dict:
-                    if color in self.finish_color:
-                        continue
+                    # if key in self.finish_color:
+                    #     print(self.which_color)
+                    #     print(self.finish_color)
+                    #     continue
+                    print(self.which_color)
+                    print(self.finish_color)
+                    print("reaches here")
                     # erases all the pixels in the image that aren't in that range
                     lower_bound, upper_bound = self.color_dict[color]
                     mask = cv2.inRange(hsv, lower_bound , upper_bound)
-
                     # determines the center of the colored pixels
                     M = cv2.moments(mask)
-
                     # if it detected the color
                     if M['m00'] > 0:
                         self.detected_color = True
