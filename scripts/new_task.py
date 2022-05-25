@@ -187,17 +187,11 @@ class InverseKinematics:
                             self.start_moving_forward = 0
                             self.goal_location = [0.3, 0, 0.2]
                             self.detected_color = False
-                            # self.finish_color.append(self.finish_color)
                             self.color_dict.pop(self.which_color)
             else:
                 for color in self.color_dict:
-                    # if key in self.finish_color:
-                    #     print(self.which_color)
-                    #     print(self.finish_color)
-                    #     continue
                     print(self.which_color)
                     print(self.finish_color)
-                    print("reaches here")
                     # erases all the pixels in the image that aren't in that range
                     lower_bound, upper_bound = self.color_dict[color]
                     mask = cv2.inRange(hsv, lower_bound , upper_bound)
@@ -238,7 +232,7 @@ class InverseKinematics:
         if self.is_metal == 0:
             tag = 1
         else:
-            tag = 0
+            tag = 3
 
         # explore the environment by turning around to find tag
         self.movement.angular.z = 0.1
@@ -491,7 +485,14 @@ class InverseKinematics:
         self.movement.linear.x = 0.0
         self.vel_pub.publish(self.movement)
 
-        rospy.sleep(1)
+        initial_angles = [0, -0.5, 0, 0]
+        #angles = [.495, .066, .048, .430]
+        #angles = [-.555, .403, .187, .270]
+        self.move_group_arm.go(initial_angles, wait=True)
+        self.move_group_gripper.go([0.01, 0.01], wait=True)
+
+
+        rospy.sleep(3)
         #updating control variables 
         self.object_dropped = 1
         self.robot_state = 4
