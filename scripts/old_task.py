@@ -16,11 +16,11 @@ from turtlebot3_msgs.msg import SensorState
 aruco_dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_50)
 
 
-class InverseKinematics:
+class RecyclableTrashSorter:
     def __init__(self):
         
 
-        rospy.init_node("inverse_kinematics")
+        rospy.init_node("recycable_trash_sorter")
 
         # set up ROS / OpenCV bridge
         self.bridge = cv_bridge.CvBridge()
@@ -94,7 +94,7 @@ class InverseKinematics:
         self.color_dict = {
             0: (np.array([95, 90, 100]), np.array([105, 110, 150])),
             1: (np.array([155, 140, 120]), np.array([165, 160, 170])),
-            2: (np.array([30, 130, 90]), np.array([40, 150, 150]))
+            # 2: (np.array([30, 130, 90]), np.array([40, 150, 150]))
         }
 
         self.cx = 0
@@ -112,6 +112,8 @@ class InverseKinematics:
         self.vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
 
         self.reached_object = False
+
+        self.all_sorted = False
 
        
         print('finished initializing!')
@@ -188,6 +190,8 @@ class InverseKinematics:
                             self.goal_location = [0.3, 0, 0.2]
                             self.detected_color = False
                             self.color_dict.pop(self.which_color)
+                            if (self.color_dict == False):
+                                self.all_sorted = True
             else:
                 for color in self.color_dict:
                     print(self.which_color)
@@ -501,9 +505,9 @@ class InverseKinematics:
         # Uses gradient descent to compute how much to move arms.
         # reference: https://www.alanzucconi.com/2017/04/10/robotic-arms/
 
-        while True:
+        while not self.all_sorted:
             self.update_state()
 if __name__ == "__main__":
-    node = InverseKinematics()
+    node = RecyclableTrashSorter()
     rospy.sleep(3)
     node.run()
