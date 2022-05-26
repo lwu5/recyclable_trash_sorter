@@ -167,7 +167,7 @@ class InverseKinematics:
                     # print('should start rotating')
                     angular_error = ((self.w/2) - (self.cx))
                     angular_k = 0.001
-                    angular_tol = 4.0
+                    angular_tol = 3.0
                     # print(angular_error)
                     self.movement.angular.z = angular_error * angular_k
                     if abs(angular_error) <= angular_tol:
@@ -176,7 +176,7 @@ class InverseKinematics:
                 
                     # this handles forward movement
                     if self.start_moving_forward:
-                        linear_tol = 0.0145
+                        linear_tol = 0.03
                         self.movement.linear.x = min((self.front_distance - 0.15) * 0.4, 0.5)
                         self.movement.angular.z = 0
                         print(self.front_distance - 0.15)
@@ -392,8 +392,10 @@ class InverseKinematics:
     def clamp_angles(self, angles, angle_idx):
         if angles[angle_idx] < self.angle_min[angle_idx]:
             angles[angle_idx] = self.angle_min[angle_idx]
+            print('clamped because too small', angle_idx)
         elif angles[angle_idx] > self.angle_max[angle_idx]:
             angles[angle_idx] = self.angle_max[angle_idx]
+            print('clamped because too large', angle_idx)
 
     def partial_gradient(self, angle_idx):
         # Computes gradient based on joint distance of each joint.
@@ -441,6 +443,8 @@ class InverseKinematics:
     def pick_up_object(self):
 
         # run gradient descent after finding the right xyz to pick up the object
+        print('current joint angles', self.current_joint_angles)
+        print('goal_location', self.goal_location)
         self.do_gradient_descent(self.current_joint_angles, self.goal_location) # also takes into account picking up object
         
         # after gradient descent has converged, move the angles to the location for pickup
