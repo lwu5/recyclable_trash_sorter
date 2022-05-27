@@ -116,9 +116,9 @@ class InverseKinematics:
             self.current_joint_angles[angle_idx] = self.angle_max[angle_idx]
 
 
-    def gradient_descent(self, angle_idx, goal_location):
+    def partial_gradient(self, angle_idx, goal_location):
         '''
-        Computes the gradient for a given joint angle to see in which direction (+ or -) and how much
+        Computes the partial gradient for a given joint angle to see in which direction (+ or -) and how much
         the joint angle should change to minimize the distance of the current xyz position of the 
         end effector to the goal xyz position
         
@@ -178,7 +178,7 @@ class InverseKinematics:
                     # iterate over all 4 joints
                     for i in (range(len(self.current_joint_angles))): 
                         # determine gradient for that joint
-                        gradient = self.gradient_descent(i, goal_location)
+                        gradient = self.partial_gradient(i, goal_location)
                         # travel down the gradient and go towards a minimum (b/w current xyz and goal xyz)
                         # by adjusting the angle based on the calculated gradient
                         self.current_joint_angles[i] -= tau * gradient
