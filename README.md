@@ -73,7 +73,11 @@ https://www.researchgate.net/publication/279201859_Kinematics_Modeling_of_a_4-DO
 ### Demo:
 - **ik_demo.py**: This demo shows the functionality of the inverse kinematics algorithm. We specify a list of seven goal positions in xyz space that the end effector should move to. It first moves outwards, and then draw a star shape in the next 6 locations (starts from lower left corner, then apex corner of star, lower right corner, middle left corner, middle right corner, then lower left corner again).
 
+https://user-images.githubusercontent.com/65791750/170651352-a79440ff-4127-45ca-a5ea-d81d75b8196a.mp4
+
 - **old_task.py**: This demo shows how all the components come together to have the robot properly recognize, pick up, classify objects, and put it in front of the right AR tag. 
+
+https://user-images.githubusercontent.com/65791750/170651587-54016948-100f-480b-8b87-fdb2d066f0ff.mp4
 
 
 ## Challenges, Future Work, and Takeaways: These should take a similar form and structure to how you approached these in the previous projects (1 paragraph each for the challenges and future work and a few bullet points for takeaways)
