@@ -232,7 +232,7 @@ class RecyclableTrashSorter:
         # tag to look for, and then this method makes the robot recognize that tag with camera data and then move 
         # towards it sufficently close with LiDAR data
         
-        # put all the nonmetal objects at AR tag 1, metal objects at AR tag 2 
+        # put all the nonmetal objects at AR tag 1, metal objects at AR tag 3 
         if self.is_metal == 0:
             tag = 1
         else:
