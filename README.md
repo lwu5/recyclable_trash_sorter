@@ -26,11 +26,12 @@ Describe the goal of your project, why it's interesting, what you were able to m
   - AR tag 1 represents the “recycling bin”, or where all non-metal objects should be placed. 
   - AR tag 3 represents where all metal objects should be placed. 
  
-## System Architecture: Describe in detail the robotics algorithm you implemented and each major component of your project, highlight what pieces of code contribute to these main components
+## System Architecture: 
+Describe in detail the robotics algorithm you implemented and each major component of your project, highlight what pieces of code contribute to these main components
 
 - **Robot perception**: This section primarily made use of camera and scan information. We had the robot rotate and recognize different colored batons. As described earlier, the batons act as placeholders for our metal/non metal objects. The colors of the batons were not relevant, we just used different colored batons so our robot could recognize the baton. We then averaged the color pixels to find the center of the object, and used proportional control to make the robot move towards the object. We then used the LiDAR data to determine an accurate stopping distance for the robot, away from the object, depending on a certain tolerance level found via testing. 
   - Location: function find_color, scan_callback, image_callback
-- **Clicker sensor and sensor integration**: (NOTE: Liuhao will fill in more details of actually implementing and integrating the sensor, but seniors are just writing the basics of this component with regards to how it fits together with other robot perception). 
+- **Clicker sensor and sensor integration**: #TODO (NOTE: Liuhao will fill in more details of actually implementing and integrating the sensor, but seniors are just writing the basics of this component with regards to how it fits together with other robot perception). 
   - We subscribe to the ‘/sensor_state’ robot topic that holds the state of the button click in the illumination attribute of this topic’s message. The value is 2 if the sensor is unclicked (which occurs when the gripper holds paper/soft/non-metal objects) The sensor returns 1 if it is clicked (for hard/metal objects). The return value from the sensor allowed us to classify the object as metal or non-metal and we changed a self.is_metal attribute in the sensor state callback function depending on the result. The AR tag recognition code sees the value of this attribute to know what corresponding tag to look for. 
   - Code location: find_tag, button_callback
 - **Inverse kinematics**: Instead of solving for a closed-form set of equations that yield the correct joint angles to make an end effector reach a desired xyz position in space, we used the gradient descent optimization algorithm to solve for the joint angles in a numerical, iterative manner. We used this resource to help write the algorithm. 
@@ -69,19 +70,21 @@ https://www.researchgate.net/publication/279201859_Kinematics_Modeling_of_a_4-DO
   - 4th terminal: roslaunch turtlebot3_manipulation_bringup turtlebot3_manipulation_bringup.launch
   - 5th terminal: roslaunch turtlebot3_manipulation_moveit_config move_group.launch
   - 6th terminal: rosrun image_transport republish compressed in:=raspicam_node/image raw out:=camera/rgb/image_raw
-  - 7th terminal: rosrun recyclable_trash_sorter old_task.py
+  - 7th terminal: rosrun recyclable_trash_sorter recyclable_trash_sorter.py
 
 ### Demo:
 - **ik_demo.py**: This demo shows the functionality of the inverse kinematics algorithm. We specify a list of seven goal positions in xyz space that the end effector should move to. It first moves outwards, and then draw a star shape in the next 6 locations (starts from lower left corner, then apex corner of star, lower right corner, middle left corner, middle right corner, then lower left corner again).
 
 https://user-images.githubusercontent.com/65791750/170651352-a79440ff-4127-45ca-a5ea-d81d75b8196a.mp4
 
-- **old_task.py**: This demo shows how all the components come together to have the robot properly recognize, pick up, classify objects, and put it in front of the right AR tag. 
+- **recyclable_trash_sorter.py**: This demo shows how all the components come together to have the robot properly recognize, pick up, classify objects, and put it in front of the right AR tag. 
 
 https://user-images.githubusercontent.com/65791750/170651587-54016948-100f-480b-8b87-fdb2d066f0ff.mp4
 
 
-## Challenges, Future Work, and Takeaways: These should take a similar form and structure to how you approached these in the previous projects (1 paragraph each for the challenges and future work and a few bullet points for takeaways)
+## Challenges, Future Work, and Takeaways: 
+These should take a similar form and structure to how you approached these in the previous projects (1 paragraph each for the challenges and future work and a few bullet points for takeaways)
+
 ### Challenges:
 - One of the big initial challenges we had was setting up the sensor and integrating it with the system. We ended up settling on using the clicker sensor because it outputted a binary value that made it easier to work with. 
 - Another challenge we had was implementing the forward kinematics step which was necessary for running the gradient descent for inverse kinematics. It took quite a bit to understand how the theoretical kinematics equations did not match up to the robot setup, and use trigonometry to think about how to adjust the angles of the turtlebot setup. It also took a while to figure out through testing all of the xyz planes/positions relative to the robot because the GUI was pretty unreliable, but it was ultimately really important for visualizing the axes and how changing each joint angle changes the xyz coordinates in concerted ways.
@@ -89,6 +92,7 @@ https://user-images.githubusercontent.com/65791750/170651587-54016948-100f-480b-
 ### Future work:
 - For future work, we could explore converting the camera coordinates when the camera sees an object to real life coordinates so that we could have our IK algorithm solve for joint angles to reach different goal_locations depending on where the object xyz position is (instead of having the robot move to the same place relative to the object every time and feed in the same goal_location for the IK solver). This could be done with using a checkerboard pattern and OpenCV libraries that compute the transformation matrices between real world coordinates of checkerboard corners and the image coordinates of those detected corners on the screen (similar to how the cyborg robot dog group performed those transformations I believe). 
 - For another future work, we could also explore more complicated optimization algorithms or versions of gradient descent and compare how long they take to converge or whether they are better at getting closer to the goal position (distance thresholds between goal and current xyz position can be set much lower without too large of an increase in convergence time). 
+- sensor: TODO
 
 ### Takeaways
 - Connecting a sensor to the turtlebot involved a lot of manipulation on the hardware and software side. Though Liuhao will likely expand on sensor-related points, as a team figuring out how to start research from knowing nothing at the beginning about sensor implementation or IK-solver things was a valuable experience that taught us to be resourceful in exploring different references and interpreting diagrams to understand trigonometry or other concepts. It taught us to be more independent in the process of thinking about robotics projects, which was pretty cool in giving us the confidence to explore different ideas on our own even after the end of this course.
