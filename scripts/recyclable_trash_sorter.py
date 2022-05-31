@@ -18,7 +18,6 @@ aruco_dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_50)
 
 class RecyclableTrashSorter:
     def __init__(self):
-        
 
         rospy.init_node("recycable_trash_sorter")
 
@@ -37,9 +36,6 @@ class RecyclableTrashSorter:
         # the interface to the group of joints making up the turtlebot3
         # openmanipulator gripper
         self.move_group_gripper = moveit_commander.MoveGroupCommander("gripper")
-
-        # absolute position of end effector
-        #self.current_location = moveit_commander.move_group.MoveGroupCommander.get_current_pose()
 
         # initialize the goal location
         self.goal_location = [0.3, 0, 0.2]
@@ -77,23 +73,27 @@ class RecyclableTrashSorter:
         self.robot_state = 0
 
 
-        # set lower and upper hsv bounds for blue, pink, and green
+        # set lower and upper hsv bounds for 0 - blue, 1 - pink, and 2 - green
         self.color_dict = {
             0: (np.array([95, 90, 100]), np.array([105, 110, 150])),
             1: (np.array([155, 140, 120]), np.array([165, 160, 170])),
-            # 2: (np.array([30, 130, 90]), np.array([40, 150, 150]))
+            2: (np.array([30, 130, 90]), np.array([40, 150, 150]))
         }
+        
         # keep track of what color is found
         self.detected_color = False
+        
         # initialize to keep track of which color was found, represents 
-        # the key of the corresponding color in the color dictionary 
-        self.which_color = 10
+        # the key of the corresponding color in the color dictionary
+        # valid color would only be 0, 1, 2;
+        self.which_color = -1
 
         # initializing attributes for holding the center of the colored pixels 
         # or the width of image
         self.cx = 0
         self.cy = 0
         self.w = 0
+        
         # what the image width is
         self.img_width = 100
 
@@ -108,9 +108,11 @@ class RecyclableTrashSorter:
         self.button_sub = rospy.Subscriber('sensor_state', SensorState, self.button_callback)
         # setting up publisher for linear or angular movement
         self.vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
-
+        
+        # check if the robot has been facing the object in a preset distance
         self.reached_object = False
 
+        # all the objects have been sorted
         self.all_sorted = False
 
         print('finished initializing!')
@@ -138,15 +140,13 @@ class RecyclableTrashSorter:
             self.movement.angular.z = 0.2
             # loads the image and checks for color in image
             image = self.bridge.imgmsg_to_cv2(self.images, desired_encoding='bgr8') # loading the color image
-            
-            hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+            hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV) # convert to hsv
 
             #dimensions of the image, used later for proportional control 
             h, self.w, d = image.shape
 
             # check if a color has been detected, then start processes to move towards it
             if self.detected_color:
-                # print('entered self.detected_color')
                 # erases all the pixels in the image that aren't in that range
                 lower_bound, upper_bound = self.color_dict[self.which_color]
                 mask = cv2.inRange(hsv, lower_bound , upper_bound)
@@ -161,7 +161,7 @@ class RecyclableTrashSorter:
                     self.start_moving_forward = False
                     self.movement.linear.x = 0
                     self.movement.angular.z = 0.2
-                else:
+                else: # looking for the next color in camera view
                     # center of the colored pixels in the image
                     cx = int(M['m10']/M['m00'])
                     cy = int(M['m01']/M['m00'])
@@ -172,18 +172,15 @@ class RecyclableTrashSorter:
                     cv2.circle(image, (cx, cy), 20, (0,0,255), -1)
             
                     # proportional control to rotate towards the object
-                    # print('should start rotating')
                     angular_error = ((self.w/2) - (self.cx))
                     angular_k = 0.001
                     angular_tol = 4.0
-                    # print(angular_error)
                     self.movement.angular.z = angular_error * angular_k
                     
-                    #if the front of the robot is facing the object within a certain angular tolerance, 
+                    # if the front of the robot is facing the object within a certain angular tolerance, 
                     # then it is sufficiently centered in the robot's camera view and 
                     # should start moving forward towards the object 
                     if abs(angular_error) <= angular_tol:
-                        # print('should start moving forward')
                         self.start_moving_forward = True
                 
                     # if the bot should move forward, should use LiDAR scan data to figure out when to 
@@ -193,27 +190,23 @@ class RecyclableTrashSorter:
                         linear_tol = 0.0145
                         self.movement.linear.x = min((self.front_distance - 0.15) * 0.4, 0.5)
                         self.movement.angular.z = 0
-                        #print(self.front_distance - 0.15)
                         
                         # sufficiently close, stop all motion, delete the color which was detected
                         # from the color dictionary, and set state variables to initiate next part 
                         # of robot movement
                         if abs((self.front_distance - 0.15) < linear_tol):
-                            # print(self.front_distance - 0.15)
                             self.movement.linear.x = 0
                             self.movement.angular.z = 0
-                            self.robot_state = 1
-                            self.start_moving_forward = 0
-                            self.goal_location = [0.3, 0, 0.2]
-                            self.detected_color = False
-                            self.color_dict.pop(self.which_color)
-                            if (self.color_dict == False):
+                            self.robot_state = 1 # orient facing object (1)
+                            self.start_moving_forward = 0 # not moving forward
+                            self.detected_color = False # color isnt detected yet
+                            self.color_dict.pop(self.which_color) # delete the selected color from dictionary
+                                                                  # of unsorted objects
+                            if (self.color_dict == False): # If all colors have been sorted
                                 self.all_sorted = True
-            else:
+            else: # no color detected
                 # go through all the colors in the dictionary to see if it is present in the camera view
                 for color in self.color_dict:
-                    #print(self.which_color)
-                    #print(self.finish_color)
                     # erases all the pixels in the image that aren't in that range
                     lower_bound, upper_bound = self.color_dict[color]
                     mask = cv2.inRange(hsv, lower_bound , upper_bound)
@@ -224,7 +217,6 @@ class RecyclableTrashSorter:
                     if M['m00'] > 0:
                         self.detected_color = True
                         self.which_color = color
-                        # print(self.which_color)
                         break
             # visualizing the image
             cv2.imshow("window", image)
@@ -320,7 +312,7 @@ class RecyclableTrashSorter:
                         # extracting distances of the objects or tags located 
                         # -10 to 10 degrees in front of the bot
                         print('should start moving forward')
-                        if self.scans is not None:
+                        if self.scans is not None: # if lidar is working
                             ranges = np.asarray(self.scans)
                             ranges[ranges == 0.0] = np.nan
                             slice_size = int(20)
@@ -329,8 +321,8 @@ class RecyclableTrashSorter:
                     
                             # this is the mean distance of likely the tag that has been detected from the robot
                             slice_mean = np.nanmean(np.append(ranges[first_half_angles],ranges[second_half_angles]))
-                            if np.isnan(slice_mean):
-                                # if all LiDAR measurements invalid (0.0) then the mean is NaN, stop moving forward
+                            if np.isnan(slice_mean): # if all LiDAR measurements invalid (0.0) then the 
+                                                     # mean is NaN, stop moving forward
                                 self.movement.linear.x = 0
                             else:
                                 linear_error = slice_mean - self.min_dist_away 
@@ -345,7 +337,7 @@ class RecyclableTrashSorter:
                                     self.movement.linear.x = 0
                                     self.movement.angular.z = 0
                                     self.robot_state = 3
-                    else:
+                    else: # robot is close to the target
                         self.movement.linear.x = 0.0
             # to visualize the robot localizing to tags         
             cv2.imshow("window", grayscale_image)
@@ -360,12 +352,12 @@ class RecyclableTrashSorter:
         # actually represents the button state. it is 1.0 when it is pressed, and 2.0 when
         # it is not pressed, so the former represents when the gripper is holding a harder metal object
         # and the latter represents when it is holding a softer non-metal object
-        if (data.illumination == 2.0):
+        if (data.illumination == 2.0): # button clicked
             self.is_metal = 0
-        elif (data.illumination == 1.0):
+        elif (data.illumination == 1.0): # button unclicked
             self.is_metal = 1
             print("button pressed!")
-        else:
+        else: # error - default value is 0.0
             print("Sensor ERROR!")
 
 
@@ -435,6 +427,7 @@ class RecyclableTrashSorter:
 
         goal_location_array = np.asarray(goal_location)
         
+        # distance from the robot gripper to the goal location
         distance = np.linalg.norm(curr_location_array - goal_location_array) 
         return distance
     
@@ -444,9 +437,9 @@ class RecyclableTrashSorter:
         arm's joint motion when solving for an IK solution during gradient descent
         '''
 
-        if angles[angle_idx] < self.angle_min[angle_idx]:
+        if angles[angle_idx] < self.angle_min[angle_idx]: # if calculation exceeds the min joint angle
             angles[angle_idx] = self.angle_min[angle_idx]
-        elif angles[angle_idx] > self.angle_max[angle_idx]:
+        elif angles[angle_idx] > self.angle_max[angle_idx]: # if calculation exceeds the max joint angle
             angles[angle_idx] = self.angle_max[angle_idx]
 
     def partial_gradient(self, angle_idx):
@@ -492,9 +485,9 @@ class RecyclableTrashSorter:
         distance_threshold = 0.07
 
         # check if we're already close enough to the goal location such that algorithm doesn't need to be run
-        if self.get_joint_dist(angles, goal_location) <= distance_threshold:
+        if self.get_joint_dist(angles, goal_location) <= distance_threshold: # close enough to the goal location
                 print('reached goal')
-        else:
+        else: # not close enough yet
             while self.get_joint_dist(angles, goal_location) > distance_threshold:
                 # iterate over all 4 joints
                 for i in (range(len(angles))): 
@@ -505,11 +498,13 @@ class RecyclableTrashSorter:
                     angles[i] -= tau * gradient
                     # clamping to make sure that angle values do not go out of bounds
                     self.clamp_angles(angles, i)
-                # check if converged, close enough to goal
-                if self.get_joint_dist(angles, goal_location) < distance_threshold:
+                if self.get_joint_dist(angles, goal_location) < distance_threshold: # check if converged, close enough to goal
                     print('converged')
     
     def pick_up_object(self):
+        '''
+        pick up the color
+        '''
 
         # run gradient descent after finding the right xyz to pick up the object
         self.do_gradient_descent(self.current_joint_angles, self.goal_location) # also takes into account picking up object
@@ -531,7 +526,7 @@ class RecyclableTrashSorter:
         self.move_group_arm.go(arm_joint_goal, wait=True)
         self.move_group_arm.stop()
 
-        # TODO: potentially could use
+        # TODO: future work, potentially could use
         #self.do_gradient_descent(self.current_joint_angles, [0.1,0,0.4]) # also takes into account picking up object, specify an xyz
 
         self.object_picked_up = 1
@@ -579,7 +574,8 @@ class RecyclableTrashSorter:
         # until all the objects have been sorted
         while not self.all_sorted:
             self.update_state()
+            
 if __name__ == "__main__":
     node = RecyclableTrashSorter()
     rospy.sleep(3)
-    node.run()
+    node.run() # keep the program running
