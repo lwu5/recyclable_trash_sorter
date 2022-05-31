@@ -187,14 +187,15 @@ class RecyclableTrashSorter:
                     # stop moving if sufficiently close
                     if self.start_moving_forward:
                         # proportional control to get close to object within a set distance
-                        linear_tol = 0.0145
+                        linear_tol = 0.15
                         self.movement.linear.x = min((self.front_distance - 0.15) * 0.4, 0.5)
                         self.movement.angular.z = 0
                         
                         # sufficiently close, stop all motion, delete the color which was detected
                         # from the color dictionary, and set state variables to initiate next part 
                         # of robot movement
-                        if abs((self.front_distance - 0.15) < linear_tol):
+                        print("front dist", self.front_distance)
+                        if (self.front_distance - 0.2) < linear_tol:
                             self.movement.linear.x = 0
                             self.movement.angular.z = 0
                             self.robot_state = 1 # orient facing object (1)
@@ -202,7 +203,7 @@ class RecyclableTrashSorter:
                             self.detected_color = False # color isnt detected yet
                             self.color_dict.pop(self.which_color) # delete the selected color from dictionary
                                                                   # of unsorted objects
-                            if (self.color_dict == False): # If all colors have been sorted
+                            if (self.color_dict is np.empty): # If all colors have been sorted
                                 self.all_sorted = True
             else: # no color detected
                 # go through all the colors in the dictionary to see if it is present in the camera view
