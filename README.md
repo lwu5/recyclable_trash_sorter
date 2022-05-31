@@ -79,7 +79,8 @@ https://user-images.githubusercontent.com/65791750/170651352-a79440ff-4127-45ca-
 
 - **recyclable_trash_sorter.py**: This demo shows how all the components come together to have the robot properly recognize, pick up, classify objects, and put it in front of the right AR tag. 
 
-https://user-images.githubusercontent.com/65791750/170651587-54016948-100f-480b-8b87-fdb2d066f0ff.mp4
+
+https://user-images.githubusercontent.com/59663733/171243806-2e74bf01-49c0-4cc1-9ad8-e95c34526cae.mp4
 
 
 ## Challenges, Future Work, and Takeaways: 
