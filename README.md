@@ -6,7 +6,8 @@ LAWS: Ana Rath, Suha Chang, William Zeng, Liuhao Wu
 
 # Project Writeup
 
-## Project Description: Describe the goal of your project, why it's interesting, what you were able to make your robot do, and what the main components of your project are and how they fit together - please include diagrams and gifs when appropriate
+## Project Description: 
+Describe the goal of your project, why it's interesting, what you were able to make your robot do, and what the main components of your project are and how they fit together - please include diagrams and gifs when appropriate
 
 - The goal of the project is to have the robot act as a trash sorter. The robot should be able to pick up an object, identify if it is metal or not depending on the clicker sensor, and accordingly place it in the correct “pile of trash” at the corresponding AR tags. 
 
