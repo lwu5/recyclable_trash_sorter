@@ -1,8 +1,6 @@
-# Recyclable Trash Sorter
+# Recyclable Trash Sorter - 6/3
 ## Team Members:
-LAWS: Ana Rath, Suha Chang, William Zeng, Liuhao Wu
-
-- Note: this version of the writeup is for the graduating seniors in our group (Suha and Ana)
+LAWS: Liuhao Wu, Ana Rath, William Zen, Suha Chang
 
 # Project Writeup
 
@@ -93,7 +91,7 @@ These should take a similar form and structure to how you approached these in th
 ### Future work:
 - For future work, we could explore converting the camera coordinates when the camera sees an object to real life coordinates so that we could have our IK algorithm solve for joint angles to reach different goal_locations depending on where the object xyz position is (instead of having the robot move to the same place relative to the object every time and feed in the same goal_location for the IK solver). This could be done with using a checkerboard pattern and OpenCV libraries that compute the transformation matrices between real world coordinates of checkerboard corners and the image coordinates of those detected corners on the screen (similar to how the cyborg robot dog group performed those transformations I believe). 
 - For another future work, we could also explore more complicated optimization algorithms or versions of gradient descent and compare how long they take to converge or whether they are better at getting closer to the goal position (distance thresholds between goal and current xyz position can be set much lower without too large of an increase in convergence time). 
-- sensor: TODO
+- Sensor: since we did not have access to percise metal sensor, the robot is currently using a digital button to differentiate cardboard as metal (button clicked) and soft paper as other stuff (i.e., button unclicked). In the future, it would be more intersting if we can have better and more precise sensor that can differentiate different kinds of materials so we can actually make this preliminary idea into a real trash sorter.
 
 ### Takeaways
 - Connecting a sensor to the turtlebot involved a lot of manipulation on the hardware and software side. Though Liuhao will likely expand on sensor-related points, as a team figuring out how to start research from knowing nothing at the beginning about sensor implementation or IK-solver things was a valuable experience that taught us to be resourceful in exploring different references and interpreting diagrams to understand trigonometry or other concepts. It taught us to be more independent in the process of thinking about robotics projects, which was pretty cool in giving us the confidence to explore different ideas on our own even after the end of this course.
