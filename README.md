@@ -30,6 +30,7 @@ Describe in detail the robotics algorithm you implemented and each major compone
 - **Robot perception**: This section primarily made use of camera and scan information. We had the robot rotate and recognize different colored batons. As described earlier, the batons act as placeholders for our metal/non metal objects. The colors of the batons were not relevant, we just used different colored batons so our robot could recognize the baton. We then averaged the color pixels to find the center of the object, and used proportional control to make the robot move towards the object. We then used the LiDAR data to determine an accurate stopping distance for the robot, away from the object, depending on a certain tolerance level found via testing. 
   - Location: function find_color, scan_callback, image_callback
 - **Clicker sensor and sensor integration**: #TODO (NOTE: Liuhao will fill in more details of actually implementing and integrating the sensor, but seniors are just writing the basics of this component with regards to how it fits together with other robot perception). 
+  - We incroperate an addtional sensor to OpenCR board on turtlebot using Arduino IDE. We create [this seperate document](https://docs.google.com/document/d/14uKMXYK_6BwinJ8hCWUsSV8afdWk8S0hto-dfYOL_kI/edit?usp=sharing) that describes the incroperation as well as an explanation of communication among OpenCR, local machine, Pi, and sensors.
   - We subscribe to the ‘/sensor_state’ robot topic that holds the state of the button click in the illumination attribute of this topic’s message. The value is 2 if the sensor is unclicked (which occurs when the gripper holds paper/soft/non-metal objects) The sensor returns 1 if it is clicked (for hard/metal objects). The return value from the sensor allowed us to classify the object as metal or non-metal and we changed a self.is_metal attribute in the sensor state callback function depending on the result. The AR tag recognition code sees the value of this attribute to know what corresponding tag to look for. 
   - Code location: find_tag, button_callback
 - **Inverse kinematics**: Instead of solving for a closed-form set of equations that yield the correct joint angles to make an end effector reach a desired xyz position in space, we used the gradient descent optimization algorithm to solve for the joint angles in a numerical, iterative manner. We used this resource to help write the algorithm. 
@@ -100,6 +101,3 @@ These should take a similar form and structure to how you approached these in th
 
 ## Proposal 5/11
 [Google Doc](https://docs.google.com/document/d/1U5GDX519xxsTQEZ-CdnZdTD-etKLyl8Cw83zIqQJ3U4/edit?usp=sharing) 
-
-
-### [Installing Arduino](https://emanual.robotis.com/docs/en/parts/controller/opencr10/#install-on-linux)
