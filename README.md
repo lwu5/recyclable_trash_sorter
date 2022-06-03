@@ -1,8 +1,8 @@
-# Recyclable Trash Sorter - 6/3
+# Recyclable Trash Sorter
 ## Team Members:
 LAWS: Liuhao Wu, Ana Rath, William Zen, Suha Chang
 
-# Project Writeup
+# Project Writeup - 6/3
 
 ## Project Description: 
 Describe the goal of your project, why it's interesting, what you were able to make your robot do, and what the main components of your project are and how they fit together - please include diagrams and gifs when appropriate
