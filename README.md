@@ -76,11 +76,13 @@ https://www.researchgate.net/publication/279201859_Kinematics_Modeling_of_a_4-DO
 
 https://user-images.githubusercontent.com/65791750/170651352-a79440ff-4127-45ca-a5ea-d81d75b8196a.mp4
 
-- **recyclable_trash_sorter.py**: This demo shows how all the components come together to have the robot properly recognize, pick up, classify objects, and put it in front of the right AR tag. 
-
+- **recyclable_trash_sorter.py**: This demo shows how all the components come together to have the robot properly recognize, pick up, classify objects, and put it in front of the right AR tag (Metal: Pink, Green; Other: Blue). 
 
 https://user-images.githubusercontent.com/59663733/171243806-2e74bf01-49c0-4cc1-9ad8-e95c34526cae.mp4
 
+- **Sensor**: Running `rostopic echo sensor_state` command on terminal, we can receive ros message from the `sensor_state` node. Read the illumination data: 0.0 - Error; 1.0 - Clicked; 2.0 - Not Clicked.
+
+![Sensor](https://user-images.githubusercontent.com/59663733/171802580-673f0ce9-98fa-4547-ae1b-7fb6e95f7bf7.gif)
 
 ## Challenges, Future Work, and Takeaways: 
 These should take a similar form and structure to how you approached these in the previous projects (1 paragraph each for the challenges and future work and a few bullet points for takeaways)
