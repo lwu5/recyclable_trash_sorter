@@ -29,7 +29,7 @@ Describe in detail the robotics algorithm you implemented and each major compone
 
 - **Robot perception**: This section primarily made use of camera and scan information. We had the robot rotate and recognize different colored batons. As described earlier, the batons act as placeholders for our metal/non metal objects. The colors of the batons were not relevant, we just used different colored batons so our robot could recognize the baton. We then averaged the color pixels to find the center of the object, and used proportional control to make the robot move towards the object. We then used the LiDAR data to determine an accurate stopping distance for the robot, away from the object, depending on a certain tolerance level found via testing. 
   - Location: function find_color, scan_callback, image_callback
-- **Clicker sensor and sensor integration**: #TODO (NOTE: Liuhao will fill in more details of actually implementing and integrating the sensor, but seniors are just writing the basics of this component with regards to how it fits together with other robot perception). 
+- **Clicker sensor and sensor integration**:  
   - We incroperate an addtional sensor to OpenCR board on turtlebot using Arduino IDE. This was achieved by modifying code for illumination sensor in [this library file](https://github.com/lwu5/recyclable_trash_sorter/blob/main/turtlebot3_sensor.cpp) in OpenCR package. We create [this seperate document](https://docs.google.com/document/d/14uKMXYK_6BwinJ8hCWUsSV8afdWk8S0hto-dfYOL_kI/edit?usp=sharing) that describes the incroperation as well as an explanation of communication among OpenCR, local machine, Pi, and sensors.
   - We subscribe to the ‘/sensor_state’ robot topic that holds the state of the button click in the illumination attribute of this topic’s message. The value is 2 if the sensor is unclicked (which occurs when the gripper holds paper/soft/non-metal objects) The sensor returns 1 if it is clicked (for hard/metal objects). The return value from the sensor allowed us to classify the object as metal or non-metal and we changed a self.is_metal attribute in the sensor state callback function depending on the result. The AR tag recognition code sees the value of this attribute to know what corresponding tag to look for. 
   - Code location: find_tag, button_callback
@@ -98,6 +98,17 @@ These should take a similar form and structure to how you approached these in th
 - Connecting a sensor to the turtlebot involved a lot of manipulation on the hardware and software side. Though Liuhao will likely expand on sensor-related points, as a team figuring out how to start research from knowing nothing at the beginning about sensor implementation or IK-solver things was a valuable experience that taught us to be resourceful in exploring different references and interpreting diagrams to understand trigonometry or other concepts. It taught us to be more independent in the process of thinking about robotics projects, which was pretty cool in giving us the confidence to explore different ideas on our own even after the end of this course.
 - Using optimization methods for figuring out inverse kinematics equations is a good method to use when the number of degrees of freedom becomes too large and finding closed-form solutions is not possible. Learning about how to implement methods like gradient descent for a robotics context and optimizing parameters to find the right conditions for convergence might be helpful in the type of later research I (Suha) might want to do in the future with robotic prosthetic limb/hand manipulation that requires many DOFs to consider. Working out the trigonometry equations for the forward kinematics aspect was harder than expected and gave a lot of practical experience with matching any theoretical equations to practical robotic arms setup in different configurations. 
 
+## Documentation
+[Google Drive](https://docs.google.com/presentation/d/1TQrmKzfUX_MzDBj5fKlK_B9lssLDVOx_f5L8HXA443I/edit?usp=sharing)
+
+## Sensor Setup Guide 6/3
+[Google Doc](https://docs.google.com/document/d/14uKMXYK_6BwinJ8hCWUsSV8afdWk8S0hto-dfYOL_kI/edit?usp=sharing) 
+
+## Final Demo 5/26
+[Google Slides](https://docs.google.com/presentation/d/1TQrmKzfUX_MzDBj5fKlK_B9lssLDVOx_f5L8HXA443I/edit?usp=sharing)
+
+## Midway Presentation 5/17
+[Google Slides](https://docs.google.com/presentation/d/1_2I_io8abTTr4aPq8oNrKEosh7vAx7mNTNrI74xxv9k/edit?usp=sharing)
 
 ## Proposal 5/11
 [Google Doc](https://docs.google.com/document/d/1U5GDX519xxsTQEZ-CdnZdTD-etKLyl8Cw83zIqQJ3U4/edit?usp=sharing) 
